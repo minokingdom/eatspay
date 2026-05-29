@@ -3,7 +3,19 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "index.html",
+          "이츠페이_관리자_시스템_10.html",
+          "css/**",
+          "js/**",
+          "logo.png",
+          "구글.png",
+          "네이버.png",
+          "카카오톡.png"
+        ]
+      }
     }
   ],
   "routes": [
