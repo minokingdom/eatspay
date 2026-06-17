@@ -861,6 +861,18 @@ html.native-app .screen-container {
   padding-right: 58px;
 }
 
+#login-pw {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+#login-pw[type="password"] {
+  letter-spacing: 2px;
+  text-shadow: 0 0 0 #111827;
+}
+
 .password-toggle {
   position: absolute;
   right: 10px;
