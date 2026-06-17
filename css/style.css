@@ -830,10 +830,20 @@ html.native-app .screen-container {
   padding: 0 14px;
   font-size: 14px;
   font-family: var(--font);
-  color: var(--text-primary);
+  color: #111827;
+  -webkit-text-fill-color: #111827;
+  caret-color: #111827;
   background: var(--bg-white);
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:-webkit-autofill,
+.form-input:-webkit-autofill:hover,
+.form-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #111827;
+  caret-color: #111827;
+  box-shadow: 0 0 0 1000px var(--bg-white) inset;
 }
 
 .form-input::placeholder { color: var(--text-light); }
