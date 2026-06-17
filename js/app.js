@@ -1499,9 +1499,15 @@ async function showUnreadNotifications() {
   const notifications = await fetchUnreadNotifications();
   if (!notifications.length) return;
   for (const item of notifications) {
+    const id = item.id ? String(item.id) : '';
+    if (id && sessionStorage.getItem(`notificationShown:${id}`) === '1') {
+      await markNotificationsRead([id]);
+      continue;
+    }
     await showAppAlert(item.body || item.title || '새 알림이 있습니다.', item.title || '알림');
+    if (id) sessionStorage.setItem(`notificationShown:${id}`, '1');
+    await markNotificationsRead([item.id]);
   }
-  await markNotificationsRead(notifications.map(item => item.id));
 }
 
 function todayYMD() {
