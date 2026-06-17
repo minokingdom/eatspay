@@ -34,6 +34,7 @@ function normalizeSelectedAgency(value) {
 }
 let selectedAgency = normalizeSelectedAgency(sessionStorage.getItem('selectedDeliveryAgency'));
 sessionStorage.setItem('selectedDeliveryAgency', selectedAgency);
+let agencySettlementPage = 1;
 let deliveryAgencyCache = [];
 let installmentPolicyCache = [];
 let installmentBannerIndex = 0;
@@ -1653,30 +1654,59 @@ function renderAgencySettlement(data = {}) {
   const items = Array.isArray(data.items) ? data.items : [];
   if (!list) return;
   if (!items.length) {
-    list.innerHTML = '<div style="border:1.5px dashed var(--border-color);border-radius:var(--radius);padding:28px 14px;text-align:center;color:var(--text-muted);font-size:13px;font-weight:800;background:var(--bg-white);">해당 기간의 결제내역이 없습니다.</div>';
+    list.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:28px 10px;color:var(--text-muted);">해당 기간의 결제내역이 없습니다.</td></tr>';
+    renderAgencyPagination(data.pagination || { currentPage: 1, totalPages: 1 });
     return;
   }
   list.innerHTML = items.map(item => `
-    <div class="agency-settlement-card">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-        <div>
-          <div style="font-size:14px;font-weight:900;color:var(--text-primary);margin-bottom:3px;">${escapeHtml(item.franchiseName || '-')}</div>
-          <div style="font-size:11px;font-weight:800;color:var(--text-muted);">${escapeHtml(item.date || '')}</div>
-        </div>
-        <span style="font-size:11px;font-weight:900;color:${item.status === '취소' ? '#e53935' : 'var(--green-primary)'};">${escapeHtml(item.status || '-')}</span>
-      </div>
-      <div class="agency-settlement-row"><span>승인번호</span><strong style="font-size:11px;">${escapeHtml(item.approvalNo || '-')}</strong></div>
-      <div class="agency-settlement-row"><span>결제금액</span><strong>${formatWon(item.paymentAmount)}</strong></div>
-      <div class="agency-settlement-row"><span>입금액</span><strong>${formatWon(item.depositAmount)}</strong></div>
-      <div class="agency-settlement-row"><span>대리점 수수료</span><strong style="color:var(--green-primary);">${formatWon(item.agencyFee)}</strong></div>
-      <div class="agency-settlement-row"><span>지급 예정액</span><strong style="color:var(--green-dark);">${formatWon(item.agencyNet)}</strong></div>
-    </div>
+    <tr>
+      <td>
+        <div style="white-space:nowrap;">${escapeHtml(item.date || '')}</div>
+        <div style="font-size:10px;color:${item.status === '취소' ? '#e53935' : 'var(--green-primary)'};margin-top:3px;">${escapeHtml(item.status || '-')}</div>
+      </td>
+      <td>
+        <div style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.franchiseName || '-')}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${escapeHtml(item.approvalNo || '-')}</div>
+      </td>
+      <td style="text-align:right;">${formatWon(item.paymentAmount)}</td>
+      <td style="text-align:right;color:var(--green-primary);">${formatWon(item.agencyFee)}</td>
+      <td style="text-align:right;color:var(--green-dark);">${formatWon(item.agencyNet)}</td>
+    </tr>
   `).join('');
+  renderAgencyPagination(data.pagination || { currentPage: 1, totalPages: 1 });
 }
 
-async function fetchAgencySettlement() {
+function renderAgencyPagination(pagination = {}) {
+  const wrap = $('#agency-pagination');
+  if (!wrap) return;
+  const current = Number(pagination.currentPage || 1);
+  const total = Math.max(Number(pagination.totalPages || 1), 1);
+  if (total <= 1) {
+    wrap.innerHTML = '';
+    return;
+  }
+  const pages = [];
+  const start = Math.max(1, current - 2);
+  const end = Math.min(total, start + 4);
+  for (let page = start; page <= end; page += 1) pages.push(page);
+  wrap.innerHTML = [
+    `<button class="agency-page-btn" data-page="${Math.max(1, current - 1)}" ${current <= 1 ? 'disabled' : ''}>‹</button>`,
+    ...pages.map(page => `<button class="agency-page-btn${page === current ? ' active' : ''}" data-page="${page}">${page}</button>`),
+    `<button class="agency-page-btn" data-page="${Math.min(total, current + 1)}" ${current >= total ? 'disabled' : ''}>›</button>`
+  ].join('');
+  $$('.agency-page-btn', wrap).forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      agencySettlementPage = Number(btn.dataset.page || 1);
+      void fetchAgencySettlement(agencySettlementPage);
+    });
+  });
+}
+
+async function fetchAgencySettlement(page = agencySettlementPage) {
   if (!isAgencyAccount()) return;
   syncAgencyDateRange();
+  agencySettlementPage = Math.max(Number(page || 1), 1);
   const startDate = $('#agency-start-date')?.value;
   const endDate = $('#agency-end-date')?.value;
   const list = $('#agency-settlement-list');
@@ -1685,10 +1715,10 @@ async function fetchAgencySettlement() {
     return;
   }
   if (list) {
-    list.innerHTML = '<div style="padding:24px;text-align:center;"><div class="spinner" style="border-top-color:var(--green-primary);width:28px;height:28px;margin:0 auto;"></div></div>';
+    list.innerHTML = '<tr><td colspan="5" style="padding:24px;text-align:center;"><div class="spinner" style="border-top-color:var(--green-primary);width:28px;height:28px;margin:0 auto;"></div></td></tr>';
   }
   try {
-    const response = await fetch(apiUrl(`/api/agency/me/settlements?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&_=${Date.now()}`), {
+    const response = await fetch(apiUrl(`/api/agency/me/settlements?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&page=${agencySettlementPage}&limit=10&_=${Date.now()}`), {
       headers: {
         'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}`
       },
@@ -1818,7 +1848,8 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#to-find-pw')?.addEventListener('click', () => navigate('find-pw'));
   $('#my-agency-settlement-btn')?.addEventListener('click', () => navigate('agency'));
   $('#agency-search-btn')?.addEventListener('click', () => {
-    void fetchAgencySettlement();
+    agencySettlementPage = 1;
+    void fetchAgencySettlement(1);
   });
   
   $('#login-submit-btn')?.addEventListener('click', async () => {

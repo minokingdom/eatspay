@@ -210,6 +210,29 @@ app.set('trust proxy', 1);
 const GH_PAYMENTS_BASE_URL = (process.env.GH_PAYMENTS_BASE_URL || 'https://api.ghpayments.kr').replace(/\/$/, '');
 
 app.get('/healthz', (req, res) => {
+  const agenciesForAdmin = agencies.map(agency => ({
+    ...agency,
+    name: displayAgencyName(agency.name)
+  }));
+  const agencyLevelById = new Map();
+  const resolveAgencyLevel = agency => {
+    const key = String(agency.id);
+    if (agencyLevelById.has(key)) return agencyLevelById.get(key);
+    if (!agency.parentId) {
+      agencyLevelById.set(key, 1);
+      return 1;
+    }
+    const parent = agenciesForAdmin.find(item => String(item.id) === String(agency.parentId));
+    const level = parent ? Math.min(resolveAgencyLevel(parent) + 1, 4) : 1;
+    agencyLevelById.set(key, level);
+    return level;
+  };
+  agenciesForAdmin.forEach(agency => {
+    agency.level = resolveAgencyLevel(agency);
+    agency.region = agency.address || '';
+    agency.deliveryNote = agency.deliveryNote || '';
+  });
+
   return res.status(200).json({
     ok: true,
     service: 'eatspay',
@@ -803,13 +826,13 @@ app.get('/api/agency/me/settlements', authenticate, asyncHandler(async (req, res
   if (req.user.role !== 'AGENCY') {
     return sendError(res, 403, 'ACCESS_DENIED', 'Agency role is required.');
   }
-  const { startDate, endDate, page = 1, limit = 100 } = req.query;
+  const { startDate, endDate, page = 1, limit = 10 } = req.query;
   if (!startDate || !endDate) {
     return sendError(res, 400, 'MISSING_DATE_FILTER', 'startDate and endDate are required.');
   }
 
   const pNum = Math.max(parseInt(page, 10) || 1, 1);
-  const lNum = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 300);
+  const lNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 300);
   const { items, totalItems } = await repo.listAgencyTransactions({
     startDate,
     endDate,
@@ -1704,10 +1727,7 @@ app.get('/api/admin/bootstrap', authenticateAdmin, asyncHandler(async (req, res)
       todayPaymentTotal
     },
     franchises,
-    agencies: agencies.map(agency => ({
-      ...agency,
-      name: displayAgencyName(agency.name)
-    })),
+    agencies: agenciesForAdmin,
     deliveryAgencies,
     installments,
     payments: paymentRows,
@@ -1739,7 +1759,7 @@ app.put('/api/admin/installments', authenticateAdmin, asyncHandler(async (req, r
 }));
 
 app.post('/api/admin/agencies', authenticateAdmin, asyncHandler(async (req, res) => {
-  const { name, loginId, level, region, owner, phone, feeRate, parentId } = req.body || {};
+  const { name, loginId, level, region, owner, phone, feeRate, parentId, password } = req.body || {};
   if (!String(name || '').trim()) {
     return sendError(res, 400, 'BAD_REQUEST', 'name is required.');
   }
@@ -1755,6 +1775,9 @@ app.post('/api/admin/agencies', authenticateAdmin, asyncHandler(async (req, res)
     feeRate: Number(feeRate) || 0,
     joinCode: `JOIN-${Date.now()}`
   });
+  if (String(password || '').trim()) {
+    await repo.updateAgencyPasswordById(agency.id, await hashPassword(String(password)));
+  }
 
   return res.status(201).json({
     success: true,
@@ -1767,7 +1790,7 @@ app.post('/api/admin/agencies', authenticateAdmin, asyncHandler(async (req, res)
 
 app.patch('/api/admin/agencies/:id', authenticateAdmin, asyncHandler(async (req, res) => {
   const agencyId = Number(req.params.id);
-  const { name, loginId, level, region, owner, phone, feeRate, parentId } = req.body || {};
+  const { name, loginId, level, region, owner, phone, feeRate, parentId, password } = req.body || {};
   if (!Number.isFinite(agencyId)) {
     return sendError(res, 400, 'BAD_REQUEST', 'agency id is required.');
   }
@@ -1787,6 +1810,9 @@ app.patch('/api/admin/agencies/:id', authenticateAdmin, asyncHandler(async (req,
   });
   if (!agency) {
     return sendError(res, 404, 'AGENCY_NOT_FOUND', 'Agency was not found.');
+  }
+  if (String(password || '').trim()) {
+    await repo.updateAgencyPasswordById(agencyId, await hashPassword(String(password)));
   }
 
   return res.status(200).json({

@@ -8,7 +8,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Square:wght@400;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=1.0.17" />
+  <link rel="stylesheet" href="css/style.css?v=1.0.18" />
 
 </head>
 <body>
@@ -297,7 +297,21 @@
             <div style="font-size: 15px; font-weight: 900; color: var(--text-primary);">기간 내 결제내역</div>
             <div id="agency-fee-rate" style="font-size: 11px; font-weight: 800; color: var(--green-primary);">수수료율 -</div>
           </div>
-          <div id="agency-settlement-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+          <div class="agency-table-wrap">
+            <table class="agency-settlement-table">
+              <thead>
+                <tr>
+                  <th>일시</th>
+                  <th>가맹점</th>
+                  <th>결제금액</th>
+                  <th>수수료</th>
+                  <th>지급</th>
+                </tr>
+              </thead>
+              <tbody id="agency-settlement-list"></tbody>
+            </table>
+          </div>
+          <div id="agency-pagination" class="agency-pagination"></div>
         </div>
 
         <div class="bottom-nav"></div>
