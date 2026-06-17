@@ -1511,19 +1511,24 @@ async function showUnreadNotifications() {
 }
 
 function todayYMD() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const koreaTime = new Date(now.getTime() + (9 * 60 + now.getTimezoneOffset()) * 60000);
+  const year = koreaTime.getFullYear();
+  const month = String(koreaTime.getMonth() + 1).padStart(2, '0');
+  const day = String(koreaTime.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-function syncPaymentHistoryDateRange() {
+function syncPaymentHistoryDateRange(forceToday = false) {
   const startInput = $('#filter-start-date');
   const endInput = $('#filter-end-date');
   if (!startInput || !endInput) return;
 
   const today = todayYMD();
-  if (!startInput.value || startInput.value === '2026-05-01') {
+  if (forceToday || !startInput.value || startInput.value === '2026-05-01') {
     startInput.value = today;
   }
-  if (!endInput.value || endInput.value === '2026-05-30') {
+  if (forceToday || !endInput.value || endInput.value === '2026-05-30') {
     endInput.value = today;
   }
 }
@@ -2452,7 +2457,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Navigations
   $('#my-payment-history-btn')?.addEventListener('click', () => {
-    syncPaymentHistoryDateRange();
+    syncPaymentHistoryDateRange(true);
     navigate('payment-history');
     if (isAuthenticated()) {
       fetchPaymentHistory();
