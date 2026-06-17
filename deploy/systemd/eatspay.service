@@ -1,0 +1,16 @@
+[Unit]
+Description=Eats Pay Node Service
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/eatspay
+EnvironmentFile=/opt/eatspay/.env
+ExecStart=/usr/bin/node /opt/eatspay/server.js
+Restart=always
+RestartSec=5
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

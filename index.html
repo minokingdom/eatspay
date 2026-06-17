@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -44,7 +44,7 @@
       <div id="screen-splash" class="screen active" style="background: linear-gradient(135deg, #fbfdfb 0%, #eaf7e8 100%);">
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;">
           <div style="text-align:center;width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
-            <img src="logo.png" class="splash-img-premium" style="height: 96px; width: auto; margin-bottom: 20px; transition: transform 0.5s;" alt="eats PAY">
+            <img src="logo.png" class="splash-img-premium" style="height: 77px; width: auto; margin-bottom: 20px; transition: transform 0.5s;" alt="eats PAY">
             <div class="splash-brand splash-brand-premium" style="font-size:38px;font-weight:900;color:#3a9430;letter-spacing:-1.5px;margin-top:8px;">이츠페이</div>
             <div class="splash-tagline splash-tagline-premium" style="font-size:17px;color:#444;line-height:1.7;font-weight:700;margin-top:6px;">배달대행비 카드결제의 새로운 기준</div>
           </div>
@@ -55,33 +55,32 @@
       <!-- 홈 -->
       <div id="screen-home" class="screen">
         <div class="home-header" style="display:flex; justify-content: space-between; align-items: center; padding: 16px 20px 8px; flex-shrink: 0;">
-          <span style="font-size: 18px; font-weight: 800; color: var(--text-primary);">로그인을 해주세요</span>
-          <span style="font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer;">전체보기</span>
+          <span id="home-identity-title" style="font-size: 18px; font-weight: 800; color: var(--text-primary);">로그인을 해주세요</span>
+          <button type="button" id="home-auth-action" style="font-size: 13px; font-weight: 700; color: var(--text-secondary); cursor: pointer; background: none; border: none; padding: 0;">로그인</button>
         </div>
 
         <div class="scrollable-content" style="padding:16px 0;">
-          <!-- 로그인 안내 및 현대카드 프로모션 카드 (통합 카드) -->
-          <div id="home-login-banner" style="margin: 0 16px 16px; padding: 16px; border: 1.5px solid var(--border-color); border-radius: var(--radius); background: var(--bg-white); cursor: pointer;">
-            <div style="font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.6; margin-bottom: 20px;">
-              로그인을 하시면 이츠페이의 모든 서비스를<br>이용이 가능하십니다
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-light); padding-top: 16px;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <div style="border: 1px solid #1a1a5e; padding: 2px 5px; border-radius: 3px; font-size: 9px; font-weight: 800; color: #1a1a5e; font-family: sans-serif; line-height: 1; letter-spacing: -0.3px;">Hyundai Card</div>
-                <div style="display: flex; flex-direction: column; line-height: 1.25;">
-                  <span style="font-size: 13px; font-weight: 800; color: #1a1a1a;">현대카드</span>
-                  <span style="font-size: 11px; color: var(--text-secondary); font-weight: 700;">무이자할부 최대 3개월</span>
-                </div>
+          <!-- 무이자 할부 카드 프로모션 배너 -->
+          <div id="home-login-banner" class="metal-benefit-banner" style="margin: 0 16px 16px; padding: 16px; border-radius: var(--radius); position: relative; overflow: hidden; cursor: pointer;">
+            <div class="metal-benefit-glow"></div>
+            <div class="metal-benefit-sheen"></div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; position:relative;">
+              <div id="home-banner-title" style="font-size: 15px; font-weight: 800; color: var(--text-primary); line-height: 1.45;">
+                무이자 할부 가능 카드 안내
               </div>
-              <button class="btn-promo" style="background:var(--green-primary); color:white; border:none; padding:8px 16px; border-radius:var(--radius-sm); font-size:13px; font-weight:700; cursor:pointer;" id="home-promo-btn">충전하기</button>
+              <button class="btn-promo" style="background:var(--green-primary); color:white; border:none; padding:8px 12px; border-radius:var(--radius-sm); font-size:12px; font-weight:800; cursor:pointer; flex-shrink:0;" id="home-promo-btn">충전하기</button>
+            </div>
+            <div id="home-installment-slide" style="display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(45, 150, 65, 0.18); padding-top: 14px; position: relative; min-height: 44px;">
+              <div id="home-banner-card-logos" style="display: flex; gap: 6px; flex-shrink: 0;"></div>
+              <div style="display: flex; flex-direction: column; line-height: 1.25; min-width: 0; flex: 1;">
+                <span id="home-banner-name" style="font-size: 14px; font-weight: 900; color: #12351b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">무이자할부 정책이 없습니다.</span>
+                <span id="home-banner-subtitle" style="font-size: 11px; color: var(--text-secondary); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">관리자에서 이번 달 무이자 할부 정책을 설정해주세요.</span>
+              </div>
             </div>
           </div>
 
-          <!-- 5개 사각형 박스 메뉴 -->
+          <!-- 홈 바로가기 메뉴 -->
           <div style="display: flex; justify-content: space-between; margin: 0 16px 20px; gap: 8px;">
-            <div id="btn-menu-charge" style="flex: 1; height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1.5px solid var(--border-color); border-radius: var(--radius); background: var(--bg-white); cursor: pointer;">
-              <span style="font-size: 11px; font-weight: 800; color: var(--text-primary);">충전하기</span>
-            </div>
             <div style="flex: 1; height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1.5px solid var(--border-color); border-radius: var(--radius); background: var(--bg-white); cursor: pointer;">
               <span style="font-size: 11px; font-weight: 800; color: var(--text-primary);">선정산</span>
             </div>
@@ -176,6 +175,37 @@
         </div>
       </div>
 
+      <!-- 전체 혜택 카드 화면 -->
+      <div id="screen-benefit-cards" class="screen">
+        <div class="app-header" style="display:flex; justify-content: space-between; align-items: center; padding: 20px 24px 12px; flex-shrink: 0;">
+          <button class="btn-back" style="border:none; background:none; font-weight:800; cursor:pointer; color:#333;">‹ 이전</button>
+          <img src="logo.png" style="height: 28px; width: auto;" alt="eats PAY">
+        </div>
+
+        <div class="scrollable-content" style="padding: 0 24px 24px;">
+          <div style="margin-bottom: 18px;">
+            <h2 style="font-size: 20px; font-weight: 900; margin: 0 0 6px; color: var(--text-primary);">무이자 할부 혜택 카드</h2>
+            <p style="font-size: 12px; color: var(--text-secondary); font-weight: 700; line-height: 1.5; margin: 0;">관리자에서 설정한 이번 달 무이자 할부 정책입니다.</p>
+          </div>
+          <div id="benefit-card-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+
+        <div class="bottom-nav">
+          <div class="nav-item active" id="nav-home-benefit-cards">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9.5L12 3l9 6.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 22V12h6v10"/></svg>
+            <span class="nav-label">홈</span>
+          </div>
+          <div class="nav-item" id="nav-my-benefit-cards">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span class="nav-label">내정보</span>
+          </div>
+          <div class="nav-item" id="nav-cs-benefit-cards">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span class="nav-label">고객센터</span>
+          </div>
+        </div>
+      </div>
+
       <!-- 내 정보 화면 -->
       <div id="screen-my" class="screen">
         <div class="app-header" style="display:flex; flex-direction: column; gap: 4px; margin-bottom: 16px; padding: 20px 24px 8px; border-bottom: none; flex-shrink: 0;">
@@ -184,7 +214,7 @@
         </div>
 
         <div class="scrollable-content" style="padding-bottom: 20px;">
-          <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); padding: 0 24px; margin-bottom: 16px;">착한치킨 송도점</div>
+          <div class="session-store-name" style="font-size: 16px; font-weight: 800; color: var(--text-primary); padding: 0 24px; margin-bottom: 16px;">-</div>
 
           <div id="my-card-manage-btn" style="margin: 0 24px 12px; padding: 16px; border: 1.5px solid var(--border-color); border-radius: var(--radius); background: var(--bg-white); cursor: pointer; display: flex; flex-direction: column;">
             <span style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px;">카드관리</span>
@@ -241,10 +271,10 @@
           <div class="auth-content">
             <div class="auth-headline">이츠페이에 로그인하고<br>더 편한 서비스를 이용하세요.</div>
             <div class="form-group">
-              <input type="text" class="form-input" id="login-id" placeholder="아이디" value="admin">
+              <input type="text" class="form-input" id="login-id" placeholder="아이디" autocomplete="username">
             </div>
             <div class="form-group">
-              <input type="password" class="form-input" id="login-pw" placeholder="비밀번호" value="1234">
+              <input type="password" class="form-input" id="login-pw" placeholder="비밀번호" autocomplete="current-password">
             </div>
             <div class="checkbox-row" id="keep-login-row">
               <div class="custom-checkbox" id="keep-login-cb"></div>
@@ -411,19 +441,19 @@
             <div class="register-section-title">사업장정보</div>
             <div class="form-group"><input class="form-input" id="reg-store-name" type="text" placeholder="사업자등록증의 상호명을 입력해주세요"/></div>
             <div class="form-group"><input class="form-input" id="reg-ceo-name" type="text" placeholder="사업자등록증의 대표자명을 입력해주세요"/></div>
-            <div class="form-group"><input class="form-input" id="reg-address" type="text" placeholder="사업장주소를 입력해주세요"/></div>
+            <div class="form-group">
+              <div style="display:flex;gap:8px;">
+                <input class="form-input" id="reg-address" type="text" placeholder="사업장주소를 검색해주세요" readonly style="flex:1;"/>
+                <button type="button" class="btn-send" id="reg-address-search">주소검색</button>
+              </div>
+            </div>
             <div class="form-group"><input class="form-input" id="reg-tel" type="text" placeholder="전화번호를 입력해주세요" inputmode="tel"/></div>
             
             <!-- 사업자등록증 업로드 영역 (라인 스타일 아웃라인 버튼) -->
             <div class="form-group" style="margin-bottom: 16px;">
               <span class="form-label" style="font-size: 14px; font-weight: 800; color: #666; margin-bottom: 8px;">사업자등록증</span>
-              <button class="btn-secondary" id="upload-biz-license" style="width: 100%; height: 48px; background: white; border: 1.5px solid #3a9430; color: #3a9430; font-weight: 800; font-size: 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">사업자등록증을 업로드해주세요</button>
-            </div>
-            
-            <!-- 포스화면 가상계좌 업로드 영역 (라인 스타일 아웃라인 버튼) -->
-            <div class="form-group" style="margin-bottom: 20px;">
-              <span class="form-label" style="font-size: 14px; font-weight: 800; color: #666; margin-bottom: 8px;">포스화면 가상계좌</span>
-              <button class="btn-secondary" id="upload-pos-screen" style="width: 100%; height: 48px; background: white; border: 1.5px solid #3a9430; color: #3a9430; font-weight: 800; font-size: 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">포스화면의 가상계좌화면을 업로드해주세요</button>
+              <input id="reg-biz-license-file" type="file" accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf" style="display:none;">
+              <button type="button" class="btn-secondary" id="upload-biz-license" style="width: 100%; height: 48px; background: white; border: 1.5px solid #3a9430; color: #3a9430; font-weight: 800; font-size: 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">사업자등록증을 업로드해주세요</button>
             </div>
 
             <button class="btn-primary" id="reg-step3-next" style="margin-top:8px;">다음</button>
@@ -604,70 +634,14 @@
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 24px; margin-bottom: 8px;">
             <div style="display: flex; flex-direction: column;">
               <span style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 2px;">내정보/카드관리</span>
-              <span style="font-size: 13px; color: var(--text-secondary); font-weight: 700;">착한치킨 송도점</span>
+              <span class="session-store-name" style="font-size: 13px; color: var(--text-secondary); font-weight: 700;">-</span>
             </div>
             <button id="btn-to-card-add" style="background: white; border: 1.5px solid #3a9430; color: #3a9430; font-size: 13px; font-weight: 800; padding: 6px 16px; border-radius: 6px; cursor: pointer;">카드 추가</button>
           </div>
 
           <!-- 카드 목록 -->
           <div id="card-items-container" style="padding: 16px 24px 0; display: flex; flex-direction: column; gap: 16px;">
-            <!-- 비씨카드 -->
-            <div style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 16px; background: var(--bg-white); display: flex; justify-content: space-between; align-items: center; height: 110px;">
-              <!-- 왼쪽: 실물 카드 디자인 -->
-              <div style="width: 140px; height: 80px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; background: #fafafa; box-shadow: 1px 1px 4px rgba(0,0,0,0.05);">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #e53935; display: inline-block;"></span>
-                  <span style="font-size: 11px; font-weight: 800; color: #333;">비씨카드</span>
-                </div>
-                <div style="font-size: 10px; font-family: monospace; color: #555; letter-spacing: 0.5px;">****-****-****-9999</div>
-              </div>
-              <!-- 오른쪽: 별칭 및 액션 버튼 -->
-              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 12px;">
-                <span style="border: 1.5px solid #999; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; color: #555;">운영카드</span>
-                <div style="display: flex; gap: 6px;">
-                  <button class="btn-card-edit" style="background: white; border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: pointer;">수정</button>
-                  <button class="btn-card-delete" style="background: white; border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; color: #e53935; cursor: pointer;">삭제</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- 현대카드 -->
-            <div style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 16px; background: var(--bg-white); display: flex; justify-content: space-between; align-items: center; height: 110px;">
-              <!-- 왼쪽: 실물 카드 디자인 -->
-              <div style="width: 140px; height: 80px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; background: #fafafa; box-shadow: 1px 1px 4px rgba(0,0,0,0.05);">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <span style="font-size: 9px; font-weight: 800; color: #1a1a5e; font-family: sans-serif; border: 1px solid #1a1a5e; padding: 0 2px; border-radius: 1px;">현대카드</span>
-                </div>
-                <div style="font-size: 10px; font-family: monospace; color: #555; letter-spacing: 0.5px;">xxxx-xxxx-xxxx-8888</div>
-              </div>
-              <!-- 오른쪽: 별칭 및 액션 버튼 -->
-              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 12px;">
-                <span style="border: 1.5px solid #999; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; color: #555;">서브카드</span>
-                <div style="display: flex; gap: 6px;">
-                  <button class="btn-card-edit" style="background: white; border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: pointer;">수정</button>
-                  <button class="btn-card-delete" style="background: white; border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; color: #e53935; cursor: pointer;">삭제</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- 삼성카드 -->
-            <div style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 16px; background: var(--bg-white); display: flex; justify-content: space-between; align-items: center; height: 110px;">
-              <!-- 왼쪽: 실물 카드 디자인 -->
-              <div style="width: 140px; height: 80px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; background: #fafafa; box-shadow: 1px 1px 4px rgba(0,0,0,0.05);">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <span style="font-size: 11px; font-weight: 800; color: #1565c0;">삼성카드</span>
-                </div>
-                <div style="font-size: 10px; font-family: monospace; color: #555; letter-spacing: 0.5px;">****-****-****-7777</div>
-              </div>
-              <!-- 오른쪽: 별칭 및 액션 버튼 -->
-              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 12px;">
-                <span style="border: 1.5px solid #999; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; color: #555;">2서브카드</span>
-                <div style="display: flex; gap: 6px;">
-                  <button class="btn-card-edit" style="background: white; border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: pointer;">수정</button>
-                  <button class="btn-card-delete" style="background: white; border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; color: #e53935; cursor: pointer;">삭제</button>
-                </div>
-              </div>
-            </div>
+            <div style="padding: 32px 16px; text-align:center; color:#777; font-weight:700;">카드 정보를 불러오는 중입니다.</div>
           </div>
         </div>
 
@@ -705,6 +679,30 @@
             <div class="form-group">
               <label class="form-label" style="font-size: 14px; font-weight: 800; color: #666; margin-bottom: 8px;">카드번호</label>
               <input type="text" id="add-card-number" class="form-input" placeholder="카드번호 전체를 입력해주세요">
+            </div>
+
+            <!-- 카드사 -->
+            <div class="form-group">
+              <label class="form-label" style="font-size: 14px; font-weight: 800; color: #666; margin-bottom: 8px;">카드사</label>
+              <div style="position: relative;">
+                <select id="add-card-company" class="form-input" style="appearance: none; -webkit-appearance: none; background: white; padding-right: 30px;">
+                  <option value="">카드사를 선택해주세요</option>
+                  <option value="현대카드">현대카드</option>
+                  <option value="삼성카드">삼성카드</option>
+                  <option value="KB국민카드">KB국민카드</option>
+                  <option value="신한카드">신한카드</option>
+                  <option value="롯데카드">롯데카드</option>
+                  <option value="하나카드">하나카드</option>
+                  <option value="우리카드">우리카드</option>
+                  <option value="BC카드">BC카드</option>
+                  <option value="NH농협카드">NH농협카드</option>
+                  <option value="직접입력">카드사 직접입력</option>
+                </select>
+                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #888; font-size: 10px;">▼</span>
+              </div>
+              <div id="add-card-company-custom-wrap" style="display:none; margin-top: 8px;">
+                <input type="text" id="add-card-company-custom" class="form-input" placeholder="카드사명을 입력해주세요">
+              </div>
             </div>
 
             <!-- 비밀번호 -->
@@ -819,7 +817,7 @@
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 24px; margin-bottom: 16px;">
             <div style="display: flex; flex-direction: column;">
               <span style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 2px;">내정보/결제내역</span>
-              <span style="font-size: 13px; color: var(--text-secondary); font-weight: 700;">착한치킨 송도점</span>
+              <span id="payment-history-owner" class="session-store-name" style="font-size: 13px; color: var(--text-secondary); font-weight: 700;">-</span>
             </div>
             <button id="btn-tax-doc" style="background: var(--green-primary); border: none; color: white; font-size: 13px; font-weight: 800; padding: 8px 16px; border-radius: 6px; cursor: pointer;">부가세 신고자료</button>
           </div>
@@ -839,73 +837,7 @@
 
           <!-- 결제 내역 리스트 -->
           <div id="payment-items-container" style="padding: 0 24px; display: flex; flex-direction: column; gap: 16px;">
-            <!-- 내역 1 -->
-            <div class="payment-card" style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 16px; background: var(--bg-white); display: flex; flex-direction: column; gap: 6px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; margin-bottom: 4px;">
-                <span style="font-size: 13px; font-weight: 800; color: #333;">결제일 : 2026-05-19 14:23</span>
-              </div>
-              <div style="font-size: 13px; font-weight: 700; color: #555;">생각대로</div>
-              <div style="font-size: 13px; color: #777;">농협은행 000-000-0000-00000</div>
-              <div style="font-size: 13px; color: #555;">입금금액 <span style="font-weight: 800;">100,000원</span></div>
-              <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px;">
-                <span style="font-size: 14px; font-weight: 800; color: var(--green-dark);">결제액 104,602원</span>
-                <div style="display: flex; gap: 6px;">
-                  <button class="btn-cancel-pay" style="background: #467a4e; border: none; color: white; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 4px; cursor: pointer;">결제취소</button>
-                  <button class="btn-cancel-withdraw" style="background: #467a4e; border: none; color: white; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 4px; cursor: pointer;">출금취소</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- 내역 2 -->
-            <div class="payment-card" style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 16px; background: var(--bg-white); display: flex; flex-direction: column; gap: 6px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; margin-bottom: 4px;">
-                <span style="font-size: 13px; font-weight: 800; color: #333;">결제일 : 2026-05-18 15:23</span>
-              </div>
-              <div style="font-size: 13px; font-weight: 700; color: #555;">생각대로</div>
-              <div style="font-size: 13px; color: #777;">농협은행 000-000-0000-00000</div>
-              <div style="font-size: 13px; color: #555;">입금금액 <span style="font-weight: 800;">100,000원</span></div>
-              <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px;">
-                <span style="font-size: 14px; font-weight: 800; color: var(--green-dark);">결제액 104,602원</span>
-                <div style="display: flex; gap: 6px;">
-                  <button class="btn-cancel-pay" style="background: #467a4e; border: none; color: white; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 4px; cursor: pointer;">결제취소</button>
-                  <button class="btn-cancel-withdraw" style="background: #467a4e; border: none; color: white; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 4px; cursor: pointer;">출금취소</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- 내역 3 -->
-            <div class="payment-card" style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 16px; background: var(--bg-white); display: flex; flex-direction: column; gap: 6px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; margin-bottom: 4px;">
-                <span style="font-size: 13px; font-weight: 800; color: #333;">결제일 : 2026-05-15 14:23</span>
-              </div>
-              <div style="font-size: 13px; font-weight: 700; color: #555;">생각대로</div>
-              <div style="font-size: 13px; color: #777;">농협은행 000-000-0000-00000</div>
-              <div style="font-size: 13px; color: #555;">입금금액 <span style="font-weight: 800;">100,000원</span></div>
-              <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px;">
-                <span style="font-size: 14px; font-weight: 800; color: var(--green-dark);">결제액 104,602원</span>
-                <div style="display: flex; gap: 6px;">
-                  <button class="btn-cancel-pay" style="background: #467a4e; border: none; color: white; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 4px; cursor: pointer;">결제취소</button>
-                  <button class="btn-cancel-withdraw" style="background: #467a4e; border: none; color: white; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 4px; cursor: pointer;">출금취소</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- 내역 4 -->
-            <div class="payment-card" style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 16px; background: var(--bg-white); display: flex; flex-direction: column; gap: 6px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; margin-bottom: 4px;">
-                <span style="font-size: 13px; font-weight: 800; color: #333;">결제일 : 2026-05-12 14:23</span>
-              </div>
-              <div style="font-size: 13px; font-weight: 700; color: #555;">생각대로</div>
-              <div style="font-size: 13px; color: #777;">농협은행 000-000-0000-00000</div>
-              <div style="font-size: 13px; color: #555;">입금금액 <span style="font-weight: 800;">100,000원</span></div>
-              <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px;">
-                <span style="font-size: 14px; font-weight: 800; color: var(--green-dark);">결제액 104,602원</span>
-                <div style="display: flex; gap: 6px;">
-                  <button class="btn-cancel-pay" style="background: #467a4e; border: none; color: white; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 4px; cursor: pointer;">결제취소</button>
-                  <button class="btn-cancel-withdraw" style="background: #467a4e; border: none; color: white; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 4px; cursor: pointer;">출금취소</button>
-                </div>
-              </div>
-            </div>
+            <div style="padding: 32px 16px; text-align:center; color:#777; font-weight:700;">결제내역을 불러오는 중입니다.</div>
           </div>
         </div>
 
@@ -939,30 +871,14 @@
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 24px; margin-bottom: 16px;">
             <div style="display: flex; flex-direction: column;">
               <span style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 2px;">내정보/가상계좌관리</span>
-              <span style="font-size: 13px; color: var(--text-secondary); font-weight: 700;">착한치킨 송도점</span>
+              <span class="session-store-name" style="font-size: 13px; color: var(--text-secondary); font-weight: 700;">-</span>
             </div>
             <button id="btn-to-vaccount-add" style="background: white; border: 1.5px solid #3a9430; color: #3a9430; font-size: 13px; font-weight: 800; padding: 6px 16px; border-radius: 6px; cursor: pointer;">계좌 추가</button>
           </div>
 
           <!-- 가상계좌 목록 -->
           <div id="vaccount-items-container" style="padding: 0 24px; display: flex; flex-direction: column; gap: 16px;">
-            <!-- 생각대로 계좌 -->
-            <div style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 16px 20px; background: var(--bg-white); display: flex; justify-content: space-between; align-items: center; height: 110px; position: relative;">
-              <!-- 가상계좌 정보 -->
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <span style="font-size: 11px; font-weight: 800; color: #888;">배달대행사 가상계좌정보</span>
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
-                  <span style="background: #e53935; color: white; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 3px; line-height: 1;">생각대로</span>
-                  <div style="display: flex; flex-direction: column; line-height: 1.35;">
-                    <span style="font-size: 14px; font-weight: 800; color: #333;">농협은행</span>
-                    <span style="font-size: 13px; font-weight: 700; color: #555; font-family: monospace;">0000-00000-000000</span>
-                    <span style="font-size: 12px; color: #777; font-weight: 700;">홍길동</span>
-                  </div>
-                </div>
-              </div>
-              <!-- 삭제 버튼 -->
-              <button class="btn-vaccount-delete" style="background: #e53935; border: none; color: white; font-size: 12px; font-weight: 800; padding: 8px 16px; border-radius: 6px; cursor: pointer; align-self: flex-end;">삭제</button>
-            </div>
+            <div style="padding: 32px 16px; text-align:center; color:#777; font-weight:700;">가상계좌 정보를 불러오는 중입니다.</div>
           </div>
         </div>
 
@@ -1005,8 +921,9 @@
                 <button type="button" class="btn-delivery-agency" data-agency="리드콜" style="height: 40px; background: white; border: 1.5px solid var(--border-color); color: var(--text-secondary); font-weight: 800; border-radius: 6px; font-size: 13px; cursor: pointer;">리드콜</button>
                 <button type="button" class="btn-delivery-agency" data-agency="모아라인" style="height: 40px; background: white; border: 1.5px solid var(--border-color); color: var(--text-secondary); font-weight: 800; border-radius: 6px; font-size: 13px; cursor: pointer;">모아라인</button>
                 <button type="button" class="btn-delivery-agency" data-agency="딜버" style="height: 40px; background: white; border: 1.5px solid var(--border-color); color: var(--text-secondary); font-weight: 800; border-radius: 6px; font-size: 13px; cursor: pointer;">딜버</button>
-                <button type="button" class="btn-delivery-agency" data-agency="직접입력" style="height: 40px; background: white; border: 1.5px solid var(--border-color); color: var(--text-secondary); font-weight: 800; border-radius: 6px; font-size: 13px; cursor: pointer;">직접입력</button>
+                <button type="button" id="btn-delivery-agency-more" class="btn-delivery-agency" data-agency="more" onclick="openDeliveryAgencyList(event)" style="height: 40px; background: white; border: 1.5px solid var(--border-color); color: var(--text-secondary); font-weight: 800; border-radius: 6px; font-size: 13px; cursor: pointer;">더보기</button>
               </div>
+              <div id="selected-agency-label" style="margin-top: 10px; font-size: 12px; font-weight: 700; color: #2e7d32; min-height: 18px;">선택된 배달대행사: 생각대로</div>
             </div>
 
             <!-- 은행 선택 -->
@@ -1029,7 +946,7 @@
             <!-- 가상계좌번호 -->
             <div class="form-group" style="margin-bottom: 20px;">
               <label class="form-label" style="font-size: 14px; font-weight: 800; color: #666; margin-bottom: 8px;">가상계좌번호</label>
-              <input type="text" id="add-vaccount-number" class="form-input" placeholder="가상계좌번호를 입력해주세요">
+              <input type="tel" id="add-vaccount-number" class="form-input" placeholder="가상계좌번호를 입력해주세요" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false">
             </div>
 
             <!-- 포스사진등록 -->
@@ -1038,6 +955,11 @@
               <div style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 24px 16px; background: #fafafa; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;">
                 <span style="font-size: 12px; color: var(--text-secondary); line-height: 1.5; font-weight: 700;">포스상의 가상계좌번호가 보이도록<br>사진을 찍어서 등록해주세요</span>
                 <button type="button" id="btn-vaccount-upload-photo" style="background: white; border: 1.5px solid #3a9430; color: #3a9430; font-size: 13px; font-weight: 800; padding: 8px 20px; border-radius: 6px; cursor: pointer;">사진등록</button>
+                <div id="vaccount-photo-preview" style="width: 100%; display: none; margin-top: 4px; padding: 10px; border: 1px dashed #c9e6c2; border-radius: 6px; background: #fff; text-align: left;">
+                  <div style="font-size: 11px; color: #2e7d32; font-weight: 800; margin-bottom: 6px;">선택된 사진</div>
+                  <img id="vaccount-photo-preview-img" alt="선택된 사진 미리보기" style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 4px; display: none;">
+                  <div id="vaccount-photo-preview-name" style="font-size: 12px; color: #555; font-weight: 700; margin-top: 6px;">아직 선택된 사진이 없습니다.</div>
+                </div>
               </div>
             </div>
 
@@ -1061,6 +983,46 @@
         </div>
       </div>
 
+      <!-- 배달대행사 목록 화면 -->
+      <div id="screen-delivery-agency-list" class="screen">
+        <div class="app-header" style="display:flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 20px 24px 8px; border-bottom: none; flex-shrink: 0;">
+          <button class="btn-back" style="background: none; border: none; padding: 0; cursor: pointer; display: flex; align-items: center; gap: 4px; color: #555; font-size: 13px; font-weight: 800;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><polyline points="15 18 9 12 15 6"/></svg>
+            이전
+          </button>
+          <img src="logo.png" style="height: 28px; width: auto;" alt="eats PAY">
+        </div>
+
+        <div class="auth-page">
+          <div class="auth-content scrollable-content" style="padding: 0 24px 100px;">
+            <div style="font-size: 20px; font-weight: 800; line-height: 1.4; margin-bottom: 6px;">배달대행사 목록</div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 16px;">가입 가능 여부를 확인하고 선택해주세요.</div>
+
+            <div style="position: relative; margin-bottom: 18px;">
+              <input id="delivery-agency-search" class="form-input" type="search" placeholder="배달대행사 검색" autocomplete="off" style="padding-right: 42px;">
+              <button type="button" id="delivery-agency-search-clear" aria-label="검색어 지우기" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#3a5f95;font-size:20px;font-weight:800;line-height:1;cursor:pointer;">×</button>
+            </div>
+
+            <div id="delivery-agency-list-container"></div>
+          </div>
+        </div>
+
+        <div class="bottom-nav">
+          <div class="nav-item" id="nav-home-delivery-agency-list">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9.5L12 3l9 6.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 22V12h6v10"/></svg>
+            <span class="nav-label">홈</span>
+          </div>
+          <div class="nav-item active" id="nav-my-delivery-agency-list">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span class="nav-label">내정보</span>
+          </div>
+          <div class="nav-item" id="nav-cs-delivery-agency-list">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span class="nav-label">고객센터</span>
+          </div>
+        </div>
+      </div>
+
       <!-- 회원정보수정 화면 -->
       <div id="screen-edit-myinfo" class="screen">
         <div class="app-header" style="display:flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 20px 24px 8px; border-bottom: none; flex-shrink: 0;">
@@ -1075,7 +1037,7 @@
           <!-- 타이틀 영역 -->
           <div style="padding: 0 24px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 2px;">
             <span style="font-size: 16px; font-weight: 800; color: var(--text-primary);">내정보/회원정보수정</span>
-            <span style="font-size: 13px; color: var(--text-secondary); font-weight: 700;">착한치킨 송도점</span>
+            <span class="session-store-name" style="font-size: 13px; color: var(--text-secondary); font-weight: 700;">-</span>
           </div>
 
           <!-- 휴대번호 변경 -->
@@ -1143,21 +1105,7 @@
           <div style="margin-bottom: 20px;">
             <label class="form-label" style="font-size: 14px; font-weight: 800; color: #666; margin-bottom: 12px; display: block;">카드를 선택해주세요</label>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;" id="charge-card-selector">
-              <!-- 비씨카드 -->
-              <div class="charge-card-option active" data-card="bc" style="border: 1.5px solid #3a9430; border-radius: var(--radius); padding: 12px; background: var(--bg-white); cursor: pointer; display: flex; flex-direction: column; gap: 6px; box-shadow: 1px 1px 4px rgba(0,0,0,0.05); transition: border-color 0.2s;">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #e53935; display: inline-block;"></span>
-                  <span style="font-size: 11px; font-weight: 800; color: #333;">비씨카드</span>
-                </div>
-                <div style="font-size: 10px; font-family: monospace; color: #555; letter-spacing: 0.5px;">****-****-****-9999</div>
-              </div>
-              <!-- 현대카드 -->
-              <div class="charge-card-option" data-card="hyundai" style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 12px; background: var(--bg-white); cursor: pointer; display: flex; flex-direction: column; gap: 6px; box-shadow: 1px 1px 4px rgba(0,0,0,0.05); transition: border-color 0.2s;">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <span style="font-size: 9px; font-weight: 800; color: #1a1a5e; font-family: sans-serif; border: 1px solid #1a1a5e; padding: 0 2px; border-radius: 1px;">현대카드</span>
-                </div>
-                <div style="font-size: 10px; font-family: monospace; color: #555; letter-spacing: 0.5px;">****-****-****-8888</div>
-              </div>
+              <div style="grid-column:1 / -1; padding:18px 14px; text-align:center; color:#777; font-weight:800;">카드 정보를 불러오는 중입니다.</div>
             </div>
           </div>
 
@@ -1182,13 +1130,13 @@
             
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 13px; font-weight: 800; color: #555; width: 60px;">결제금액</span>
-              <input type="text" id="charge-pay-amount" class="form-input" style="flex: 1; text-align: right; background: #e0e0e0; font-weight: 800; color: #555; height: 44px;" readonly value="104,602">
+              <input type="text" id="charge-pay-amount" class="form-input" style="flex: 1; text-align: right; background: #e0e0e0; font-weight: 800; color: #555; height: 44px;" readonly value="0">
               <span style="font-size: 13px; font-weight: 800; color: #555;">원</span>
             </div>
 
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 13px; font-weight: 800; color: #555; width: 60px;">입금금액</span>
-              <input type="text" id="charge-deposit-amount" class="form-input" style="flex: 1; text-align: right; font-weight: 800; height: 44px;" placeholder="입금금액" value="100,000">
+              <input type="text" id="charge-deposit-amount" class="form-input" style="flex: 1; text-align: right; font-weight: 800; height: 44px;" placeholder="입금금액">
               <span style="font-size: 13px; font-weight: 800; color: #555;">원</span>
             </div>
           </div>
@@ -1197,30 +1145,7 @@
           <div style="margin-bottom: 24px;">
             <label class="form-label" style="font-size: 14px; font-weight: 800; color: #666; margin-bottom: 12px; display: block;">가상계좌번호를 선택해주세요</label>
             <div style="display: flex; flex-direction: column; gap: 12px;" id="charge-vaccount-selector">
-              <!-- 생각대로 -->
-              <div class="charge-vaccount-option active" data-agency="생각대로" style="border: 1.5px solid #3a9430; border-radius: var(--radius); padding: 12px 16px; background: var(--bg-white); cursor: pointer; display: flex; align-items: center; gap: 12px; box-shadow: 1px 1px 4px rgba(0,0,0,0.05); transition: border-color 0.2s;">
-                <img src="카카오톡.png" style="width: 32px; height: 32px; border-radius: 4px; display: none;" alt=""> <!-- fallback for custom logo if needed -->
-                <!-- 생각대로 로고 대체 (빨간 전구 스타일) -->
-                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; background: #fff; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; width: 85px;">
-                  <span style="font-size: 11px; font-weight: 800; color: #e53935; letter-spacing: -0.5px;">💡생각대로</span>
-                </div>
-                <div style="display: flex; flex-direction: column; line-height: 1.35; flex: 1;">
-                  <span style="font-size: 13px; font-weight: 800; color: #333;">농협은행</span>
-                  <span style="font-size: 12px; font-weight: 700; color: #555; font-family: monospace;">0000-00000-000000</span>
-                  <span style="font-size: 11px; color: #777; font-weight: 700;">홍길동</span>
-                </div>
-              </div>
-              <!-- 바로고 -->
-              <div class="charge-vaccount-option" data-agency="바로고" style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 12px 16px; background: var(--bg-white); cursor: pointer; display: flex; align-items: center; gap: 12px; box-shadow: 1px 1px 4px rgba(0,0,0,0.05); transition: border-color 0.2s;">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; background: #fff; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; width: 85px;">
-                  <span style="font-size: 11px; font-weight: 800; color: #e65100; letter-spacing: -0.5px;">B BAROGO</span>
-                </div>
-                <div style="display: flex; flex-direction: column; line-height: 1.35; flex: 1;">
-                  <span style="font-size: 13px; font-weight: 800; color: #333;">우리은행</span>
-                  <span style="font-size: 12px; font-weight: 700; color: #555; font-family: monospace;">0000-00000-000000</span>
-                  <span style="font-size: 11px; color: #777; font-weight: 700;">홍길동</span>
-                </div>
-              </div>
+              <div style="padding:18px 14px; text-align:center; color:#777; font-weight:800;">가상계좌 정보를 불러오는 중입니다.</div>
             </div>
           </div>
 
@@ -1393,27 +1318,7 @@
           </div>
 
           <!-- 할부 리스트 보드 -->
-          <div style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 8px 16px; background: var(--bg-white); display: flex; flex-direction: column; margin-bottom: 24px;">
-            <div style="padding: 16px 0; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="width: 8px; height: 8px; border-radius: 50%; background: #e53935; display: inline-block;"></span>
-                <span style="font-size: 14px; font-weight: 800; color: #333;">비씨카드</span>
-              </div>
-              <span style="font-size: 13px; font-weight: 800; color: var(--green-dark);">최대 5개월</span>
-            </div>
-            <div style="padding: 16px 0; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-size: 9px; font-weight: 800; color: #1a1a5e; font-family: sans-serif; border: 1px solid #1a1a5e; padding: 0 2px; border-radius: 1px;">현대카드</span>
-              </div>
-              <span style="font-size: 13px; font-weight: 800; color: var(--green-dark);">최대 3개월</span>
-            </div>
-            <div style="padding: 16px 0; border-bottom: none; display: flex; justify-content: space-between; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-size: 14px; font-weight: 800; color: #1565c0;">삼성카드</span>
-              </div>
-              <span style="font-size: 13px; font-weight: 800; color: var(--green-dark);">최대 2개월</span>
-            </div>
-          </div>
+          <div id="cs-installment-list" style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 8px 16px; background: var(--bg-white); display: flex; flex-direction: column; margin-bottom: 24px;"></div>
 
           <!-- 하단 고객센터 연락처 -->
           <div style="padding: 16px 8px; margin-top: 12px;">
@@ -1441,9 +1346,28 @@
   </div>
 </div>
 
+  <div id="vaccount-photo-backdrop" class="photo-backdrop" aria-hidden="true"></div>
+  <div id="vaccount-photo-sheet" class="photo-sheet" role="dialog" aria-modal="true" aria-labelledby="vaccount-photo-sheet-title">
+    <div class="photo-sheet-handle"></div>
+    <div id="vaccount-photo-sheet-title" class="photo-sheet-title">사진 등록</div>
+    <button type="button" id="btn-vaccount-photo-camera" class="photo-sheet-option">카메라로 촬영</button>
+    <button type="button" id="btn-vaccount-photo-gallery" class="photo-sheet-option">갤러리에서 선택</button>
+    <button type="button" id="btn-vaccount-photo-cancel" class="photo-sheet-cancel">취소</button>
+  </div>
+  <input type="file" id="vaccount-photo-camera-input" accept="image/*" capture="environment" hidden>
+  <input type="file" id="vaccount-photo-gallery-input" accept="image/*" hidden>
+  <div id="app-dialog-backdrop" class="app-dialog-backdrop" aria-hidden="true"></div>
+  <div id="app-dialog" class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-hidden="true">
+    <div id="app-dialog-title" class="app-dialog-title">알림</div>
+    <div id="app-dialog-message" class="app-dialog-message"></div>
+    <div class="app-dialog-actions">
+      <button type="button" id="app-dialog-cancel" class="app-dialog-btn app-dialog-btn-cancel">취소</button>
+      <button type="button" id="app-dialog-confirm" class="app-dialog-btn app-dialog-btn-confirm">확인</button>
+    </div>
+  </div>
   <div id="toast" class="toast">알림</div>
 
-  <script src="js/app.js?v=20260529_1338"></script>
+  <script src="js/app.js?v=20260617_1445"></script>
 </body>
 </html>
 

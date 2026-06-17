@@ -3,10 +3,21 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node server.js",
-    "test": "node test_e2e_register.js"
+    "db:init": "node scripts/init-db.js",
+    "db:create-admin": "node scripts/create-admin.js",
+    "db:set-admin-login": "node scripts/set-admin-login.js",
+    "android:sync": "node scripts/sync-www.js && npx cap sync android",
+    "android:open": "npx cap open android",
+    "test": "node --test test/*.test.js",
+    "test:e2e": "node test/full-flow.e2e.js"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/ios": "^8.4.0",
     "express": "^4.19.2",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.21.0"
   }
 }

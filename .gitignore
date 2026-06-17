@@ -15,6 +15,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
+uploads/
+.local/
+www/
 
 # Temporary and local recovery scripts
 recover*.py

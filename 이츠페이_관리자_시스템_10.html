@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -169,95 +169,7 @@ tr:hover td{background:#FAFFFE}
 // ═══════════════════════════════
 // 데이터
 // ═══════════════════════════════
-const IDATA = {
-  deliveryAgencyList: [{id:1,name:"생각대로",status:"active"},{id:2,name:"바로고",status:"active"},{id:3,name:"리드콜",status:"active"},{id:4,name:"모아라인",status:"active"},{id:5,name:"딜버",status:"active"},{id:6,name:"만나플러스",status:"active"},{id:7,name:"배달시대",status:"active"},{id:8,name:"제트콜",status:"active"},{id:9,name:"딜리온",status:"active"},{id:10,name:"기타",status:"active"},{id:11,name:"부릉",status:"active"},{id:12,name:"랜(RUN)",status:"active"},{id:13,name:"비욘드딜리버리",status:"active"},{id:14,name:"디플러스",status:"active"},{id:15,name:"에스런",status:"active"},{id:16,name:"알바콜",status:"active"},{id:17,name:"에스콜",status:"active"},{id:18,name:"모이콜",status:"active"},{id:19,name:"마이콜",status:"active"},{id:20,name:"모다자유",status:"active"},{id:21,name:"디지콜",status:"active"},{id:22,name:"타와",status:"active"},{id:23,name:"스피드운산",status:"active"},{id:24,name:"배달본색",status:"active"},{id:25,name:"배달고수",status:"active"},{id:26,name:"오짜콜",status:"active"},{id:27,name:"플고",status:"active"},{id:28,name:"배달이요",status:"active"},{id:29,name:"슈퍼자이로",status:"active"},{id:30,name:"라이딩",status:"active"},{id:31,name:"다배달",status:"active"},{id:32,name:"FM",status:"active"},{id:33,name:"날바람",status:"active"},{id:34,name:"배달전설",status:"active"},{id:35,name:"VIP",status:"active"},{id:36,name:"화파",status:"active"},{id:37,name:"비트",status:"active"},{id:38,name:"국가대표",status:"active"},{id:39,name:"스타딜리버리",status:"active"},{id:40,name:"오케이콜",status:"active"},{id:41,name:"토마토스포트",status:"active"},{id:42,name:"나르디",status:"active"},{id:43,name:"위드톡",status:"active"},{id:44,name:"푸드뱅크",status:"active"},{id:45,name:"칸",status:"active"},{id:46,name:"날라가",status:"active"},{id:47,name:"가유류",status:"active"},{id:48,name:"토마토플러스",status:"active"},{id:49,name:"콜플레이",status:"active"},{id:50,name:"논스톱",status:"active"},{id:51,name:"콜25",status:"active"},{id:52,name:"배달그수",status:"active"},{id:53,name:"위드런",status:"active"},{id:54,name:"두바위",status:"active"},{id:55,name:"푸드라인",status:"active"},{id:56,name:"이초런",status:"active"},{id:57,name:"매피콜",status:"active"},{id:58,name:"하이브",status:"active"},{id:59,name:"바른콜",status:"active"},{id:60,name:"드림",status:"active"},{id:61,name:"Korea delivery",status:"active"},{id:62,name:"젠딜리",status:"active"},{id:63,name:"공유다",status:"active"},{id:64,name:"배달요",status:"active"},{id:65,name:"국민배달",status:"active"},{id:66,name:"뉴트랙",status:"active"},{id:67,name:"배고파",status:"active"},{id:68,name:"배민상회",status:"active"},{id:69,name:"로드보이",status:"active"},{id:70,name:"pfc",status:"active"},{id:71,name:"로드파이터",status:"active"},{id:72,name:"에이스콜",status:"active"},{id:73,name:"플라이",status:"active"},{id:74,name:"독독",status:"active"},{id:75,name:"모두의콜",status:"active"},{id:76,name:"배태랑",status:"active"},{id:77,name:"크리오",status:"active"},{id:78,name:"인프라",status:"active"},{id:79,name:"Z",status:"active"},{id:80,name:"청초고",status:"active"},{id:81,name:"나이스",status:"active"},{id:82,name:"연범",status:"active"},{id:83,name:"국민라이더스",status:"active"},{id:84,name:"IM극속전설",status:"active"},{id:85,name:"런두유",status:"active"},{id:86,name:"상인회",status:"active"},{id:87,name:"토마토동동",status:"active"},{id:88,name:"온나",status:"active"},{id:89,name:"스피드딜리버리",status:"active"},{id:90,name:"닭아콜",status:"active"},{id:91,name:"링그",status:"active"},{id:92,name:"푸드바이크",status:"active"},{id:93,name:"군보이",status:"active"},{id:94,name:"해피고2",status:"active"},{id:95,name:"번개G",status:"active"},{id:96,name:"타이밍",status:"active"},{id:97,name:"배달하이로",status:"active"},{id:98,name:"link",status:"active"},{id:99,name:"푸드파일럿",status:"active"},{id:100,name:"스타콜",status:"active"},{id:101,name:"뭐하코리아",status:"active"},{id:102,name:"런다콜",status:"active"},{id:103,name:"배달의컨설",status:"active"},{id:104,name:"바람처럼",status:"active"},{id:105,name:"나르자",status:"active"},{id:106,name:"카카오콜",status:"active"},{id:107,name:"별리와",status:"active"},{id:108,name:"팀릭스",status:"active"},{id:109,name:"유니온go",status:"active"},{id:110,name:"순간이등",status:"active"},{id:111,name:"슈파맨",status:"active"},{id:112,name:"다드림",status:"active"},{id:113,name:"세이프",status:"active"},{id:114,name:"UFO",status:"active"},{id:115,name:"국도타이다스",status:"active"},{id:116,name:"밍동",status:"active"},{id:117,name:"가자이",status:"active"},{id:118,name:"파랑무드릭",status:"active"},{id:119,name:"파징F&S",status:"active"},{id:120,name:"전플런",status:"active"}],
-  franchises:[
-    {id:1,name:"이주커치킨 미평점",   agency:"에이빅스 직영팀",  owner:"최민수",phone:"0616-525592",  bizNo:"123-45-67890",joinDate:"2026-05-16",lastPaymentDate:"2026-05-18",status:"정상 승인",note:"",
-     deliveryAgencies:[{agency:"딜버",    accountNo:"790230190530",fileName:"딜버_계좌.jpg",    accountStatus:"승인완료",reqDate:"2026-05-16"}]},
-    {id:2,name:"프랭크버거 군산조촌점",agency:"에이빅스 직영팀",  owner:"김도현",phone:"0637311009",  bizNo:"234-56-78901",joinDate:"2026-05-15",lastPaymentDate:"2026-05-18",status:"정상 승인",note:"",
-     deliveryAgencies:[{agency:"바로고",  accountNo:"066431542737",fileName:"바로고_계좌.jpg",  accountStatus:"승인완료",reqDate:"2026-05-15"}]},
-    {id:3,name:"수숯불꼬치",           agency:"에이빅스 직영팀",  owner:"박서진",phone:"010-8567-1999",bizNo:"345-67-89012",joinDate:"2026-05-14",lastPaymentDate:"",          status:"승인 대기",note:"",
-     deliveryAgencies:[{agency:"생각대로",accountNo:"701680093324",fileName:"생각대로_계좌.jpg",accountStatus:"승인대기",reqDate:"2026-05-14"}]},
-    {id:4,name:"푸줏간",               agency:"에이빅스 직영팀",  owner:"이준혁",phone:"010-5090-0464",bizNo:"456-78-90123",joinDate:"2026-05-14",lastPaymentDate:"",          status:"승인 대기",note:"",
-     deliveryAgencies:[]},
-    {id:5,name:"칠암상희",             agency:"에이빅스 직영팀",  owner:"정수빈",phone:"0557478259",  bizNo:"567-89-01234",joinDate:"2026-05-11",lastPaymentDate:"2026-05-17",status:"정상 승인",note:"",
-     deliveryAgencies:[{agency:"생각대로",accountNo:"701680093324",fileName:"생각대로_계좌.jpg",accountStatus:"승인완료",reqDate:"2026-05-11"},{agency:"딜버",accountNo:"196490781834",fileName:"딜버_계좌2.jpg",accountStatus:"승인완료",reqDate:"2026-05-11"}]},
-    {id:6,name:"지코바 함안점",         agency:"강남영업소",       owner:"한지민",phone:"010-8720-3171",bizNo:"678-90-12345",joinDate:"2026-05-09",lastPaymentDate:"",          status:"승인 대기",note:"",
-     deliveryAgencies:[{agency:"모아라인",accountNo:"119868836100",fileName:"모아라인_계좌.jpg",accountStatus:"승인대기",reqDate:"2026-05-09"}]},
-  ],
-  agencies:[
-    {id:1,level:2,region:"",            name:"에이빅스 직영팀",loginId:"agency-01",owner:"김운영",phone:"010-1111-1111",feeRate:3.80,deliveryNote:"생각대로, 바로고, 딜버 운영"},
-    {id:2,level:3,region:"서울 강남구",  name:"강남영업소",     loginId:"agency-02",owner:"이지사",phone:"010-2222-2222",feeRate:4.20,deliveryNote:"바로고, 모아라인 운영"},
-    {id:3,level:4,region:"경기 수원시",  name:"수원지점",       loginId:"agency-03",owner:"박지점",phone:"010-3333-3333",feeRate:4.20,deliveryNote:"생각대로 운영"},
-    {id:4,level:4,region:"부산 해운대구",name:"부산해운대지점",  loginId:"agency-04",owner:"최해운",phone:"010-4444-4444",feeRate:4.20,deliveryNote:"딜버, 만나플러스 운영"},
-  ],
-  payments:[
-    {id:1,date:"2026-05-18 12:53",approvalNo:"52592018",agency:"에이빅스 직영팀",franchise:"이주커치킨 미평점",  type:"충전",amount:313808, installment:"일시불",status:"결제완료",pg:"넥스트페이",agencyId:1},
-    {id:2,date:"2026-05-18 12:27",approvalNo:"00185381",agency:"에이빅스 직영팀",franchise:"프랭크버거 군산점",  type:"충전",amount:523013, installment:"일시불",status:"결제완료",pg:"넥스트페이",agencyId:1},
-    {id:3,date:"2026-05-18 12:09",approvalNo:"52331020",agency:"에이빅스 직영팀",franchise:"칠암상희",           type:"충전",amount:200000, installment:"일시불",status:"결제완료",pg:"넥스트페이",agencyId:1},
-    {id:4,date:"2026-05-18 11:27",approvalNo:"81937561",agency:"에이빅스 직영팀",franchise:"지코바1호점",        type:"충전",amount:1046025,installment:"일시불",status:"결제완료",pg:"넥스트페이",agencyId:1},
-    {id:5,date:"2026-05-18 11:14",approvalNo:"00758411",agency:"강남영업소",      franchise:"호식이두마리치킨",  type:"충전",amount:1046025,installment:"일시불",status:"결제완료",pg:"넥스트페이",agencyId:2},
-    {id:6,date:"2026-05-17 14:30",approvalNo:"30014609",agency:"에이빅스 직영팀",franchise:"이주커치킨 미평점",  type:"충전",amount:523013, installment:"일시불",status:"결제완료",pg:"넥스트페이",agencyId:1},
-    {id:7,date:"2026-05-17 13:15",approvalNo:"97727913",agency:"에이빅스 직영팀",franchise:"칠암상희",           type:"충전",amount:313808, installment:"일시불",status:"결제완료",pg:"넥스트페이",agencyId:1},
-    {id:8,date:"2026-05-16 11:00",approvalNo:"10766405",agency:"에이빅스 직영팀",franchise:"프랭크버거 군산점",  type:"충전",amount:1046025,installment:"일시불",status:"결제완료",pg:"넥스트페이",agencyId:1},
-    {id:9,date:"2026-05-15 15:45",approvalNo:"00935627",agency:"에이빅스 직영팀",franchise:"지코바1호점",        type:"충전",amount:200000, installment:"일시불",status:"결제완료",pg:"넥스트페이",agencyId:1},
-    {id:10,date:"2026-05-14 10:30",approvalNo:"05131432",agency:"에이빅스 직영팀",franchise:"호식이두마리치킨",  type:"충전",amount:523013, installment:"일시불",status:"결제완료",pg:"넥스트페이",agencyId:1},
-  ],
-  pgSettlements:[
-    {id:1,date:"2026-05-18 13:01",approvalNo:"52592018",pg:"넥스트페이",franchise:"이주커치킨 미평점",  paymentAmt:313808, svcFee:13808,netAmt:300000, deliveryAgency:"딜버",   status:"정산완료",note:""},
-    {id:2,date:"2026-05-18 12:34",approvalNo:"00185381",pg:"넥스트페이",franchise:"프랭크버거 군산점",  paymentAmt:523013, svcFee:23013,netAmt:500000, deliveryAgency:"바로고",  status:"정산완료",note:""},
-    {id:3,date:"2026-05-18 12:16",approvalNo:"52331020",pg:"넥스트페이",franchise:"칠암상희",           paymentAmt:200000, svcFee:8800, netAmt:191200, deliveryAgency:"딜버",   status:"정산완료",note:""},
-    {id:4,date:"2026-05-18 11:33",approvalNo:"81937561",pg:"넥스트페이",franchise:"지코바1호점",        paymentAmt:1046025,svcFee:46025,netAmt:1000000,deliveryAgency:"생각대로",status:"정산완료",note:""},
-    {id:5,date:"2026-05-18 11:21",approvalNo:"00758411",pg:"넥스트페이",franchise:"호식이두마리치킨",   paymentAmt:1046025,svcFee:46025,netAmt:1000000,deliveryAgency:"생각대로",status:"정산완료",note:""},
-  ],
-  faqs:[
-    {id:1,category:"서비스 안내",question:"이츠페이는 어떤 서비스인가요?",answer:"이츠페이(eats PAY)는 배달대행비를 신용카드로 결제할 수 있는 배달대행비 카드결제 중개 솔루션입니다."},
-    {id:2,category:"서비스 안내",question:"이용 수수료는 얼마인가요?",answer:"수수료 4.4%는 결제금액에서 차감 후 입금되는 방식입니다. 예) 100만원 입금 목표 → 카드 청구 1,046,025원 → 수수료 46,025원 차감 → 1,000,000원 입금"},
-    {id:3,category:"결제",question:"결제하면 바로 충전되나요?",answer:"결제 승인 후 3~10분 이내에 등록하신 배달대행사 가상계좌로 즉시 입금됩니다."},
-    {id:4,category:"회원가입",question:"가입 후 바로 서비스를 이용할 수 있나요?",answer:"가입 신청 후 담당자 심사를 거쳐 승인이 완료된 이후 이용 가능합니다. 심사는 평균 영업일 기준 10분 내외로 처리됩니다."},
-  ],
-  notices:[
-    {id:1,title:"2026년 설 연휴 휴무일 안내",author:"운영팀",date:"2026-02-10",content:"설 연휴 기간 안내드립니다.\n\n· 휴무: 2026.01.27(화) ~ 01.29(목)\n· 정상 운영 재개: 2026.01.30(금)"},
-    {id:2,title:"2025년 연말 단축 근무 안내",author:"운영팀",date:"2025-12-30",content:"2025년 12월 31일(수) 오후 3시 이후 단축 근무 안내드립니다."},
-  ],
-  guides:[
-    {id:1,title:"마이페이지_회원정보 수정 방법",author:"CS팀",date:"2024-04-15",content:"회원정보 수정 방법을 안내합니다."},
-    {id:2,title:"충전화면_충전계좌 등록 방법",  author:"CS팀",date:"2024-04-08",content:"충전 계좌 등록 및 변경 방법을 안내합니다."},
-  ],
-  admins:[
-    {id:1,loginId:"admin001",name:"김민준",role:"총괄 관리자",lastLogin:"2026-05-18"},
-    {id:2,loginId:"admin002",name:"이서연",role:"운영 관리자",lastLogin:"2026-05-17"},
-    {id:3,loginId:"admin003",name:"박지훈",role:"정산 관리자",lastLogin:"2026-05-16"},
-    {id:4,loginId:"admin004",name:"최유진",role:"고객 관리자",lastLogin:"2026-05-15"},
-  ],
-  pgProviders: JSON.parse(JSON.stringify(CONFIG.pgProviders)),
-  agencyFeeRates:{},
-  defaultFeeRate:4.4,
-  installments:{
-    "비씨카드":{prev:[2,3,4,5],curr:[2,3,4,5],next:[2,3,4,5]},
-    "신한카드":{prev:[2,3],    curr:[2,3],    next:[2,3]},
-    "삼성카드":{prev:[2,3],    curr:[2,3],    next:[2,3,4]},
-    "현대카드":{prev:[2,3],    curr:[2,3],    next:[2,3]},
-    "롯데카드":{prev:[2,3,4,5],curr:[2,3,4,5],next:[2,3,4,5]},
-    "국민카드":{prev:[2,3],    curr:[2,3],    next:[2,3]},
-    "우리카드":{prev:[2,3,4,5],curr:[2,3,4,5],next:[2,3,4,5]},
-    "수협카드":{prev:[],       curr:[],       next:[]},
-    "농협카드":{prev:[2,3,4,5,6],curr:[2,3,4,5,6],next:[2,3,4,5,6]},
-    "하나카드":{prev:[2,3],    curr:[2,3],    next:[2,3]},
-  },
-  inquiries:[
-    {id:1,name:"정민우",phone:"01026341450",deliveryAgency:"유",region:"경주시 안강읍",handler:"이서연",status:"상담 완료",date:"2026-02-25"},
-    {id:2,name:"김하은",phone:"01056899079",deliveryAgency:"무",region:"안산",         handler:"박지훈",status:"상담 완료",date:"2026-02-25"},
-    {id:3,name:"이재원",phone:"01057193651",deliveryAgency:"유",region:"춘천",         handler:"",      status:"상담 대기",date:"2026-02-13"},
-  ],
-  banners:[
-    {id:1,type:"메인",title:"홈택스",   url:"https://hometax.go.kr",   order:1},
-    {id:2,type:"메인",title:"소상공인", url:"https://www.semas.or.kr", order:2},
-    {id:3,type:"결제",title:"이용안내", url:"https://eatspay.co.kr",   order:1},
-  ],
-  customRoles:null,
-  nextId:400
-};
+// DB API 응답만 사용합니다. 브라우저 임시 저장 데이터는 사용하지 않습니다.
 
 // ═══ 상태 ═══
 let D, page='dashboard', role='hq';
@@ -266,9 +178,36 @@ let editingAgencies=[];
 
 function getRoles(){return(D.customRoles&&D.customRoles.length)?D.customRoles:CONFIG.roles;}
 function getEffRate(ag){return D.agencyFeeRates[ag.id]||ag.feeRate;}
-function save(){try{localStorage.setItem('ep4',JSON.stringify(D));}catch(e){}}
-function load(){try{const s=localStorage.getItem('ep4');if(s)D=JSON.parse(s);else{D=JSON.parse(JSON.stringify(IDATA));}}catch(e){D=JSON.parse(JSON.stringify(IDATA));}}
-function resetData(){if(!confirm('모든 데이터를 초기화할까요? (CONFIG 설정 유지)'))return;localStorage.removeItem('ep4');D=JSON.parse(JSON.stringify(IDATA));render();toast('초기화 완료');}
+function emptyData(){
+  return {
+    agencies:[],
+    franchises:[],
+    deliveryAgencyList:[],
+    inquiries:[],
+    payments:[],
+    pgSettlements:[],
+    pgProviders:[],
+    banners:[],
+    faqs:[],
+    notices:[],
+    guides:[],
+    admins:[],
+    installments:[],
+    defaultFeeRate:4.4,
+    agencyFeeRates:{},
+    customRoles:null,
+    nextId:400
+  };
+}
+function save(){}
+function load(){D=emptyData();}
+async function resetData(){
+  if(!await adminConfirm('브라우저 임시 데이터를 비우고 DB 기준으로 다시 불러올까요?','데이터 초기화'))return;
+  D=emptyData();
+  await syncBackendTransactions();
+  render();
+  toast('DB 기준으로 새로고침 완료');
+}
 
 function getActiveDA(){return D.deliveryAgencyList.filter(a=>a.status==='active').map(a=>a.name);}
 function getAllDA(){return D.deliveryAgencyList.filter(a=>a.status!=='deleted');}
@@ -317,11 +256,25 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 function openM(title,body,foot){document.getElementById('mti').textContent=title;document.getElementById('mbd').innerHTML=body;document.getElementById('mft').innerHTML=foot;document.getElementById('mo').style.display='flex';}
 function closeM(){document.getElementById('mo').style.display='none';}
 function closeMO(e){if(e.target===document.getElementById('mo'))closeM();}
+function adminAlert(message,title='알림'){return new Promise(resolve=>{window.__adminModalResolve=resolve;openM(title,`<div style="white-space:pre-wrap;line-height:1.7;font-size:13px;font-weight:700;color:#153B15">${message}</div>`,`<button class="btn bg2" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(true)">확인</button>`);});}
+function adminConfirm(message,title='확인'){return new Promise(resolve=>{window.__adminModalResolve=resolve;openM(title,`<div style="white-space:pre-wrap;line-height:1.7;font-size:13px;font-weight:700;color:#153B15">${message}</div>`,`<button class="btn bo" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(false)">취소</button><button class="btn bg2" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(true)">확인</button>`);});}
+function adminPrompt(message,defaultValue='',title='입력'){return new Promise(resolve=>{window.__adminModalResolve=resolve;openM(title,`<div style="white-space:pre-wrap;line-height:1.7;font-size:13px;font-weight:700;color:#153B15;margin-bottom:10px">${message}</div><input class="fi" id="admin-prompt-input" value="${String(defaultValue||'').replace(/"/g,'&quot;')}">`,`<button class="btn bo" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(null)">취소</button><button class="btn bg2" onclick="const v=document.getElementById('admin-prompt-input').value;closeM();window.__adminModalResolve&&window.__adminModalResolve(v)">확인</button>`);setTimeout(()=>document.getElementById('admin-prompt-input')?.focus(),30);});}
 
 // ═══ 계좌 팝업 ═══
 function showAccountDetail(fid,idx){
-  const f=D.franchises.find(x=>x.id===fid);
+  const f=D.franchises.find(x=>String(x.id)===String(fid));
+  if(!f||!f.deliveryAgencies||!f.deliveryAgencies[idx]){
+    adminAlert('계좌 요청 정보를 찾지 못했습니다. 화면을 새로고침한 뒤 다시 시도해주세요.');
+    return;
+  }
   const da=f.deliveryAgencies[idx];
+  const documentUrl=da.documentUrl||'';
+  const isImage=/\.(png|jpe?g|gif|webp)$/i.test(documentUrl||da.fileName||'');
+  const filePreview=documentUrl
+    ? (isImage
+      ? `<img src="${documentUrl}" alt="증빙 이미지" style="max-width:100%;max-height:360px;border-radius:8px;border:1px solid #D1E8D1;object-fit:contain;background:#fff">`
+      : `<a class="btn bo" href="${documentUrl}" target="_blank" rel="noopener">증빙 파일 열기</a>`)
+    : `<div style="font-weight:700;color:#9CA3AF">파일 없음</div>`;
   openM(`계좌 등록 확인 — ${f.name}`,`
     <div class="pend-info" style="margin-bottom:14px;font-size:12px">
       <span class="pend-label">가맹점</span><span>${f.name}</span>
@@ -331,30 +284,13 @@ function showAccountDetail(fid,idx){
       <span class="pend-label">요청일</span><span>${da.reqDate||'-'}</span>
       <span class="pend-label">현재 상태</span><span>${bdg(da.accountStatus)}</span>
     </div>
-    <div style="border:2px dashed #D1E8D1;border-radius:8px;padding:28px;text-align:center;background:#F9FAFB">
-      <div style="font-size:32px;margin-bottom:8px">📎</div>
-      <div style="font-weight:700;color:#1A2E1A">${da.fileName||'파일 없음'}</div>
-      <div style="font-size:11px;color:#9CA3AF;margin-top:6px">실제 이미지는 서버에 저장됩니다<br>(개발 시 파일 서버 연동 필요)</div>
+    <div style="border:2px dashed #D1E8D1;border-radius:8px;padding:14px;text-align:center;background:#F9FAFB">
+      ${filePreview}
     </div>
     ${da.rejectReason?`<div class="aw aw-w" style="margin-top:12px">반려 사유: ${da.rejectReason}</div>`:''}`,
-  `${da.accountStatus!=='승인완료'?`<button class="btn bg2" onclick="approveAccount(${fid},${idx});closeM()">승인</button>`:''}
-   ${da.accountStatus!=='반려'?`<button class="btn bd" onclick="rejectAccount(${fid},${idx});closeM()">반려</button>`:''}
+  `${da.accountStatus!=='승인완료'?`<button class="btn bg2" onclick="approveAccount(${fid},${idx})">승인</button>`:''}
+   ${da.accountStatus!=='반려'?`<button class="btn bd" onclick="rejectAccount(${fid},${idx})">반려</button>`:''}
    <button class="btn bo" onclick="closeM()">닫기</button>`);
-}
-
-function approveAccount(fid,idx){
-  const f=D.franchises.find(x=>x.id===fid);
-  if(!confirm(`'${f.name}'의 ${f.deliveryAgencies[idx].agency} 계좌를 승인하시겠습니까?`))return;
-  f.deliveryAgencies[idx].accountStatus='승인완료';
-  if(f.status==='승인 대기')f.status='정상 승인';
-  save();render();toast(`${f.name} 계좌 승인 완료`);
-}
-function rejectAccount(fid,idx){
-  const f=D.franchises.find(x=>x.id===fid);
-  const r=prompt('반려 사유를 입력하세요:','');if(r===null)return;
-  f.deliveryAgencies[idx].accountStatus='반려';
-  f.deliveryAgencies[idx].rejectReason=r;
-  save();render();toast(`${f.name} 계좌 반려`);
 }
 
 // ═══ 전표 팝업 ═══
@@ -371,7 +307,7 @@ function showReceipt(id){
       <div class="receipt-body">
         <div class="receipt-row"><span style="color:#6B7280">거래일시</span><span style="font-weight:600">${p.date}</span></div>
         <div class="receipt-row"><span style="color:#6B7280">승인번호</span><span style="font-weight:600;font-family:monospace">${p.approvalNo}</span></div>
-        <div class="receipt-row"><span style="color:#6B7280">가맹점</span><span style="font-weight:600">${p.franchise}</span></div>
+        <div class="receipt-row"><span style="color:#6B7280">가맹점</span><span style="font-weight:600">${paymentFranchiseName(p)}</span></div>
         <div class="receipt-row"><span style="color:#6B7280">대리점</span><span>${p.agency}</span></div>
         <div class="receipt-row"><span style="color:#6B7280">PG사</span><span>${p.pg}</span></div>
         <div class="receipt-row"><span style="color:#6B7280">할부</span><span>${p.installment}</span></div>
@@ -411,27 +347,28 @@ function pgDash(){
     <div class="kpi" style="border-left-color:#EF4444"><div class="kl">계좌 승인 대기</div><div class="kv">${pending.length}건</div><div class="ks" style="cursor:pointer;color:#3D9B35" onclick="nav('accounts')">출금계좌 목록 →</div></div>
     <div class="kpi" style="border-left-color:#F59E0B"><div class="kl">가맹점 승인 대기</div><div class="kv">${pf}건</div><div class="ks" style="cursor:pointer;color:#3D9B35" onclick="nav('franchises')">가맹점 목록 →</div></div>
     <div class="kpi"><div class="kl">전체 가맹점</div><div class="kv">${D.franchises.length}개</div><div class="ks">정상: ${D.franchises.filter(f=>f.status==='정상 승인').length}개</div></div>
-    <div class="kpi" style="border-left-color:#3B82F6"><div class="kl">오늘 결제 총액 (샘플)</div><div class="kv">${fmt(tot)}</div></div>
+    <div class="kpi" style="border-left-color:#3B82F6"><div class="kl">오늘 결제 총액</div><div class="kv">${fmt(tot)}</div></div>
   </div>
-  ${pending.length?`<div class="card"><div class="ch"><span style="font-weight:700;font-size:14px">🔔 계좌 승인 대기 <span style="color:#EF4444">${pending.length}건</span></span><span style="font-size:11px;color:#6B7280">항목 클릭 시 상세 확인 가능</span></div><div style="padding:12px 16px">
-  ${pending.map(p=>`<div class="pend-card" style="cursor:pointer" onclick="showAccountDetail(${p.fid},${p.idx})">
+  <div class="card"><div class="ch"><span style="font-weight:700;font-size:14px">🔔 계좌 승인 대기 <span style="color:#EF4444">${pending.length}건</span></span><span style="font-size:11px;color:#6B7280">항목 클릭 시 상세 확인 가능</span></div><div style="padding:12px 16px">
+  ${pending.length?
+  pending.map(p=>`<div class="pend-card" style="cursor:pointer" onclick="showAccountDetail(${p.fid},${p.idx})">
     <div class="pend-hd">
       <div><div style="font-weight:700;font-size:13px">${p.fname} <span style="font-size:11px;color:#6B7280">▶ 클릭하여 상세 확인</span></div><div style="font-size:11px;color:#6B7280;margin-top:2px">요청일: ${p.reqDate||'-'}</div></div>
-      <div class="ab" onclick="event.stopPropagation()">
-        <button class="btn bg2 xs" onclick="approveAccount(${p.fid},${p.idx})">승인</button>
-        <button class="btn bd xs" onclick="rejectAccount(${p.fid},${p.idx})">반려</button>
+      <div class="ab">
+        <button class="btn bg2 xs" onclick="event.stopPropagation();approveAccount(${p.fid},${p.idx})">승인</button>
+        <button class="btn bd xs" onclick="event.stopPropagation();rejectAccount(${p.fid},${p.idx})">반려</button>
       </div>
     </div>
     <div class="pend-info"><span class="pend-label">배달대행사</span><span>${p.agency}</span><span class="pend-label">가상계좌번호</span><span style="font-family:monospace">${p.accountNo||'미입력'}</span><span class="pend-label">증빙 파일명</span><span>${p.fileName||'미첨부'}</span></div>
-  </div>`).join('')}</div></div>`:''}
+  </div>`).join(''):`<div class="emp" style="padding:34px 0">승인요청내역이 없습니다.</div>`}</div></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div class="card"><div class="ch"><span style="font-weight:700;font-size:14px">최근 결제 현황</span><button class="btn bo sm" onclick="nav('payments')">전체보기</button></div>
     <div class="tw"><table><thead><tr><th>가맹점</th><th>금액</th><th>승인번호</th><th>상태</th></tr></thead><tbody>
-    ${D.payments.slice(0,4).map(p=>`<tr><td>${p.franchise}</td><td class="tg">${fmt(p.amount)}</td><td><span style="cursor:pointer;color:#3B82F6;font-family:monospace;font-size:11px" onclick="showReceipt(${p.id})">${p.approvalNo}</span></td><td>${bdg(p.status)}</td></tr>`).join('')}
+    ${D.payments.length?D.payments.slice(0,4).map(p=>`<tr><td>${paymentFranchiseName(p)}</td><td class="tg">${fmt(p.amount)}</td><td><span style="cursor:pointer;color:#3B82F6;font-family:monospace;font-size:11px" onclick="showReceipt(${p.id})">${p.approvalNo}</span></td><td>${bdg(p.status)}</td></tr>`).join(''):`<tr><td colspan="4" class="emp">결제 내역이 없습니다.</td></tr>`}
     </tbody></table></div></div>
     <div class="card"><div class="ch"><span style="font-weight:700;font-size:14px">최근 PG 정산</span><button class="btn bo sm" onclick="nav('pgsettle')">전체보기</button></div>
     <div class="tw"><table><thead><tr><th>가맹점</th><th>입금액</th><th>상태</th></tr></thead><tbody>
-    ${D.pgSettlements.slice(0,4).map(s=>`<tr><td>${s.franchise}</td><td class="tg">${fmt(s.netAmt)}</td><td>${bdg(s.status)}</td></tr>`).join('')}
+    ${D.pgSettlements.length?D.pgSettlements.slice(0,4).map(s=>`<tr><td>${s.franchise}</td><td class="tg">${fmt(s.netAmt)}</td><td>${bdg(s.status)}</td></tr>`).join(''):`<tr><td colspan="3" class="emp">PG 정산 내역이 없습니다.</td></tr>`}
     </tbody></table></div></div>
   </div>`;
 }
@@ -455,14 +392,14 @@ function rPay(){
   const q=v('ps'),an=v('pan'),sd=v('psd'),ed=v('ped'),st=v('pst');
   const el=document.getElementById('pb');if(!el)return;
   const rows=D.payments.filter(p=>{
-    if(q&&!p.franchise.toLowerCase().includes(q.toLowerCase()))return false;
+    if(q&&!paymentFranchiseName(p).toLowerCase().includes(q.toLowerCase()))return false;
     if(an&&!p.approvalNo.includes(an))return false;
     if(st&&p.status!==st)return false;
     if(sd&&p.date<sd)return false;
     if(ed&&p.date>ed+' 23:59')return false;
     return true;
   });
-  el.innerHTML=rows.map(p=>`<tr><td>${p.date}</td><td><span style="cursor:pointer;color:#3B82F6;font-family:monospace;font-size:11px;text-decoration:underline" onclick="showReceipt(${p.id})">${p.approvalNo}</span></td><td>${p.agency}</td><td>${p.franchise}</td><td>${p.type}</td><td class="tg">${fmt(p.amount)}</td><td>${p.installment}</td><td>${bdg(p.status)}</td><td>${p.pg}</td></tr>`).join('')||'<tr><td colspan="9" class="emp">검색 결과 없음</td></tr>';
+  el.innerHTML=rows.map(p=>`<tr><td>${p.date}</td><td><span style="cursor:pointer;color:#3B82F6;font-family:monospace;font-size:11px;text-decoration:underline" onclick="showReceipt(${p.id})">${p.approvalNo}</span></td><td>${p.agency}</td><td>${paymentFranchiseName(p)}</td><td>${p.type}</td><td class="tg">${fmt(p.amount)}</td><td>${p.installment}</td><td>${bdg(p.status)}</td><td>${p.pg}</td></tr>`).join('')||'<tr><td colspan="9" class="emp">검색 결과 없음</td></tr>';
 }
 
 // ═══ PG 정산 확인 ═══
@@ -529,60 +466,96 @@ function restoreSettle(id){const s=D.pgSettlements.find(x=>x.id===id);if(!confir
 
 // ═══ 대리점 정산 ═══
 function pgSettle(){
-  const r=D.defaultFeeRate/100;
-  const agPayments={};
-  D.payments.forEach(p=>{if(!agPayments[p.agencyId])agPayments[p.agencyId]=[];agPayments[p.agencyId].push(p);});
+  const rows=getAgencySettlementRows();
   return`
   <div class="aw aw-w">📊 영업 지급예정 = 거래금액 × 0.3% × 0.967 (3.3% 세금 공제 후). 대리점명 클릭 시 결제 건별 상세 조회.</div>
   <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-    <button class="btn bo" onclick="toast('정산용 엑셀 다운로드 (서버 연동 필요)')">📥 정산용 엑셀 다운로드</button>
+    <button class="btn bo" onclick="downloadAgencySettlementExcel()">📥 정산용 엑셀 다운로드</button>
   </div>
   <div class="card"><div class="tw"><table><thead><tr><th>지점명</th><th>수수료율</th><th>전체건</th><th>전체금액</th><th>가맹입금액 (×0.956)</th><th>서비스수수료 (×0.044)</th><th>영업수수료 (×0.3%)</th><th>영업 지급예정 (세후)</th></tr></thead><tbody>
-  ${D.agencies.map(ag=>{
-    const pays=agPayments[ag.id]||[];
-    const amt=pays.reduce((s,p)=>s+p.amount,0);
-    const fee=Math.round(amt*r);
-    const net=amt-fee;
-    const agFee=Math.round(amt*0.003);
-    const agNet=Math.round(agFee*0.967);
-    const er=getEffRate(ag);
-    return`<tr style="cursor:pointer" onclick="showAgencyPayments(${ag.id},'${ag.name}')">
-      <td style="font-weight:600;color:#3B82F6;text-decoration:underline">${ag.name} <span style="font-size:10px;color:#9CA3AF">▶ 상세</span></td>
-      <td class="tg">${er.toFixed(2)}%</td>
-      <td>${pays.length}건</td>
-      <td class="tg">${fmt(amt)}</td>
-      <td>${fmt(net)}</td>
-      <td style="color:#EF4444">${fmt(fee)}</td>
-      <td>${fmt(agFee)}</td>
-      <td class="tg">${fmt(agNet)}</td>
+  ${rows.map(row=>{
+    return`<tr style="cursor:pointer" onclick="showAgencyPayments(${row.agency.id},'${row.agency.name}')">
+      <td style="font-weight:600;color:#3B82F6;text-decoration:underline">${row.agency.name} <span style="font-size:10px;color:#9CA3AF">▶ 상세</span></td>
+      <td class="tg">${row.rate.toFixed(2)}%</td>
+      <td>${row.count}건</td>
+      <td class="tg">${fmt(row.amount)}</td>
+      <td>${fmt(row.net)}</td>
+      <td style="color:#EF4444">${fmt(row.serviceFee)}</td>
+      <td>${fmt(row.agencyFee)}</td>
+      <td class="tg">${fmt(row.agencyNet)}</td>
     </tr>`;
   }).join('')}
   </tbody></table></div></div>`;
 }
+function paymentFranchiseName(payment){
+  const raw=String(payment?.franchise||'').trim();
+  const byId=(D.franchises||[]).find(f=>String(f.id)===raw||String(f.id)===String(payment?.franchiseId||''));
+  return byId?.name || raw || '-';
+}
+function paymentAgencyId(payment){
+  if(payment?.agencyId!==undefined&&payment.agencyId!==null&&String(payment.agencyId).trim()!=='')return String(payment.agencyId);
+  const raw=String(payment?.franchise||'').trim();
+  const franchise=(D.franchises||[]).find(f=>String(f.id)===String(payment?.franchiseId||'')||String(f.id)===raw||f.name===raw);
+  return franchise?.agencyId!==undefined&&franchise?.agencyId!==null?String(franchise.agencyId):'';
+}
+function paymentsForAgency(agId){
+  const id=String(agId);
+  return (D.payments||[]).filter(p=>paymentAgencyId(p)===id);
+}
+function getAgencySettlementRows(){
+  const r=Number(D.defaultFeeRate||4.4)/100;
+  return (D.agencies||[]).map(ag=>{
+    const pays=paymentsForAgency(ag.id);
+    const amount=pays.reduce((sum,p)=>sum+Number(p.amount||0),0);
+    const serviceFee=Math.round(amount*r);
+    const net=amount-serviceFee;
+    const agencyFee=Math.round(amount*0.003);
+    const agencyNet=Math.round(agencyFee*0.967);
+    return{agency:ag,payments:pays,count:pays.length,amount,serviceFee,net,agencyFee,agencyNet,rate:getEffRate(ag)};
+  });
+}
+function xlsEscape(v){
+  return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function downloadAgencySettlementExcel(){
+  const rows=getAgencySettlementRows();
+  const detailRows=rows.flatMap(row=>row.payments.map(p=>{
+    const amount=Number(p.amount||0);
+    const fee=Math.round(amount*(Number(D.defaultFeeRate||4.4)/100));
+    return{agency:row.agency.name,date:p.date,approvalNo:p.approvalNo,franchise:paymentFranchiseName(p),amount,net:amount-fee,serviceFee:fee,agencyFee:Math.round(amount*0.003),agencyNet:Math.round(Math.round(amount*0.003)*0.967)};
+  }));
+  const summary=rows.map(row=>`<tr><td>${xlsEscape(row.agency.name)}</td><td>${row.rate.toFixed(2)}%</td><td>${row.count}</td><td>${row.amount}</td><td>${row.net}</td><td>${row.serviceFee}</td><td>${row.agencyFee}</td><td>${row.agencyNet}</td></tr>`).join('');
+  const details=detailRows.length?detailRows.map(row=>`<tr><td>${xlsEscape(row.agency)}</td><td>${xlsEscape(row.date)}</td><td>${xlsEscape(row.approvalNo)}</td><td>${xlsEscape(row.franchise)}</td><td>${row.amount}</td><td>${row.net}</td><td>${row.serviceFee}</td><td>${row.agencyFee}</td><td>${row.agencyNet}</td></tr>`).join(''):`<tr><td colspan="9">정산할 결제 내역이 없습니다.</td></tr>`;
+  const html=`<!doctype html><html><head><meta charset="UTF-8"></head><body>
+    <h3>이츠페이 대리점 정산</h3>
+    <table border="1"><thead><tr><th>대리점명</th><th>수수료율</th><th>전체건</th><th>전체금액</th><th>가맹입금액</th><th>서비스수수료</th><th>영업수수료</th><th>세후 지급</th></tr></thead><tbody>${summary}</tbody></table>
+    <br>
+    <table border="1"><thead><tr><th>대리점명</th><th>거래일시</th><th>승인번호</th><th>가맹점</th><th>결제금액</th><th>입금액</th><th>서비스수수료</th><th>영업수수료</th><th>세후 지급</th></tr></thead><tbody>${details}</tbody></table>
+  </body></html>`;
+  const blob=new Blob(['\ufeff',html],{type:'application/vnd.ms-excel;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`eatspay_agency_settlement_${today()}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),500);
+}
 function showAgencyPayments(agId,agName){
-  const pays=D.payments.filter(p=>p.agencyId===agId);
+  const pays=paymentsForAgency(agId);
   if(!pays.length){toast('결제 내역이 없습니다');return;}
-  const tot=pays.reduce((s,p)=>s+p.amount,0);
+  const tot=pays.reduce((s,p)=>s+Number(p.amount||0),0);
   const svcFee=Math.round(tot*0.044);
   const agFee=Math.round(tot*0.003);
   const agNet=Math.round(agFee*0.967);
-  openM(`대리점 정산 상세 — ${agName}`,`
-    <div class="aw aw-b" style="margin-bottom:12px">
-      <div style="font-size:11px">
-        전체건: <strong>${pays.length}건</strong> &nbsp;|&nbsp;
-        전체금액: <strong class="tg">${fmt(tot)}</strong> &nbsp;|&nbsp;
-        서비스수수료: <strong style="color:#EF4444">${fmt(svcFee)}</strong> &nbsp;|&nbsp;
-        영업 지급예정: <strong class="tg">${fmt(agNet)}</strong>
-      </div>
-    </div>
+  openM(`대리점 정산 상세 - ${agName}`,
+    `<div class="aw aw-b" style="margin-bottom:12px"><div style="font-size:11px">전체건: <strong>${pays.length}건</strong> &nbsp;|&nbsp; 전체금액: <strong class="tg">${fmt(tot)}</strong> &nbsp;|&nbsp; 서비스수수료: <strong style="color:#EF4444">${fmt(svcFee)}</strong> &nbsp;|&nbsp; 영업 지급예정: <strong class="tg">${fmt(agNet)}</strong></div></div>
     <div class="tw"><table><thead><tr><th>거래일시</th><th>승인번호</th><th>가맹점</th><th>결제금액</th><th>입금액(×0.956)</th><th>수수료(×0.044)</th></tr></thead><tbody>
-    ${pays.map(p=>{const fee=Math.round(p.amount*0.044);const net=p.amount-fee;return`<tr><td style="font-size:11px">${p.date}</td><td style="font-family:monospace;font-size:10px">${p.approvalNo}</td><td>${p.franchise}</td><td class="tg">${fmt(p.amount)}</td><td>${fmt(net)}</td><td style="color:#EF4444">${fmt(fee)}</td></tr>`;}).join('')}
+    ${pays.map(p=>{const fee=Math.round(Number(p.amount||0)*0.044);const net=Number(p.amount||0)-fee;return`<tr><td style="font-size:11px">${p.date}</td><td style="font-family:monospace;font-size:10px">${p.approvalNo}</td><td>${paymentFranchiseName(p)}</td><td class="tg">${fmt(p.amount)}</td><td>${fmt(net)}</td><td style="color:#EF4444">${fmt(fee)}</td></tr>`;}).join('')}
     <tr style="background:#F0FAF0;font-weight:700"><td colspan="3">합계</td><td class="tg">${fmt(tot)}</td><td>${fmt(tot-svcFee)}</td><td style="color:#EF4444">${fmt(svcFee)}</td></tr>
     </tbody></table></div>`,
   `<button class="btn bg2" onclick="closeM()">닫기</button>`);
-}
-
-// ═══ 가맹점 목록 ═══
+}// ═══ 가맹점 목록 ═══
 function pgFr(){return`
   ${role==='hq'?`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn bg2" onclick="addF()">+ 가맹점 추가</button></div>`:''}
   <div class="sb2">
@@ -675,13 +648,38 @@ function franchiseForm(f={},roDA){return`
   ${!roDA?`<div style="font-size:10px;color:#9CA3AF;margin-top:4px">※ 파일명만 입력. 실제 파일은 서버에 별도 업로드 (개발 시 연동)</div>`:''}
   </div>`;}
 function addF(){editingAgencies=[];openM('가맹점 추가',franchiseForm({},false),`<button class="btn bo" onclick="closeM()">취소</button><button class="btn bg2" onclick="savF()">저장</button>`);setTimeout(()=>renderDARows(false),20);}
-function edF(id){const f=D.franchises.find(x=>x.id===id);editingAgencies=JSON.parse(JSON.stringify(f.deliveryAgencies||[]));const roDA=role==='agent';openM('가맹점 수정',franchiseForm(f,roDA),`<button class="btn bo" onclick="closeM()">취소</button><button class="btn bg2" onclick="savF(${id})">저장</button>`);setTimeout(()=>renderDARows(roDA),20);}
-function savF(id){const n=v('fn');if(!n.trim()){alert('상점명을 입력하세요');return;}const data={name:n.trim(),owner:v('fo'),phone:v('fp'),bizNo:v('fb2'),agency:v('fa'),note:v('fnt'),deliveryAgencies:JSON.parse(JSON.stringify(editingAgencies))};if(id){Object.assign(D.franchises.find(x=>x.id===id),data);toast('수정');}else{D.franchises.unshift({id:nid(),...data,status:'승인 대기',joinDate:today(),lastPaymentDate:''});toast('가맹점 추가');}save();closeM();renderPage();setTimeout(rFr,50);}
+function edF(id){const f=D.franchises.find(x=>String(x.id)===String(id));if(!f){adminAlert('가맹점 정보를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.');return;}editingAgencies=JSON.parse(JSON.stringify(f.deliveryAgencies||[]));const roDA=role==='agent';openM('가맹점 수정',franchiseForm(f,roDA),`<button class="btn bo" onclick="closeM()">취소</button><button class="btn bg2" onclick="savF(${id})">저장</button>`);setTimeout(()=>renderDARows(roDA),20);}
+async function savF(id){
+  const n=v('fn').trim();
+  if(!n){await adminAlert('상점명을 입력하세요.');return;}
+  const payload={name:n,owner:v('fo').trim(),phone:v('fp').trim(),bizNo:v('fb2').trim()};
+  if(!payload.owner){await adminAlert('대표자명을 입력하세요.');return;}
+  if(!id){await adminAlert('가맹점 추가는 회원가입 또는 서버 등록 API를 통해 진행해주세요.');return;}
+  try{
+    const res=await fetch(`/api/admin/franchises/${encodeURIComponent(id)}`,{
+      method:'PUT',
+      headers:{'Authorization':'Bearer mocked_admin_token','Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      const code=err.error?.code?` [${err.error.code}]`:'';
+      throw new Error((err.error?.message||err.message||'가맹점 수정에 실패했습니다.')+code);
+    }
+    await syncBackendTransactions();
+    closeM();
+    render();
+    toast('가맹점 정보가 수정되었습니다.');
+  }catch(e){
+    console.error(e);
+    await adminAlert(e.message||'가맹점 수정에 실패했습니다.');
+  }
+}
 function delF(id){const f=D.franchises.find(x=>x.id===id);if(!confirm(`'${f.name}'을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`))return;D.franchises=D.franchises.filter(x=>x.id!==id);save();renderPage();setTimeout(rFr,50);toast('삭제');}
 
 // ═══ 출금계좌 목록 ═══
 function pgAccounts(){return`
-  <div class="aw aw-b">계좌 승인은 이 화면과 대시보드 어디서 처리해도 동일하게 DB에 반영됩니다.</div>
+  <div class="aw aw-b">출금계좌 목록은 등록된 계좌의 수정·삭제 관리 화면입니다. 승인/반려 처리는 대시보드의 계좌 승인 대기 영역에서 진행합니다.</div>
   <div class="sb2">
     <input class="si" id="acs" placeholder="가맹점명 · 배달대행사 · 계좌번호 통합검색..." oninput="rAcc()">
     <select class="fs" style="width:130px" id="acst" onchange="rAcc()"><option value="">전체 상태</option><option>승인대기</option><option>승인완료</option><option>반려</option></select>
@@ -701,10 +699,108 @@ function rAcc(){
     <td style="font-size:11px">${a.reqDate||'-'}</td>
     <td>${bdg(a.accountStatus)}</td>
     <td><div class="ab">
-      ${a.accountStatus==='승인대기'?`<button class="btn bg2 xs" onclick="approveAccount(${a.fid},${a.idx})">승인</button><button class="btn bd xs" onclick="rejectAccount(${a.fid},${a.idx})">반려</button>`:''}
-      ${a.accountStatus==='반려'?`<button class="btn bo xs" onclick="approveAccount(${a.fid},${a.idx})">재승인</button>`:''}
+      ${a.accountStatus==='승인완료'
+        ? `<button class="btn bo xs" disabled style="opacity:.45;cursor:not-allowed" title="승인완료 계좌는 수정할 수 없습니다.">수정</button>`
+        : `<button class="btn bo xs" onclick="event.stopPropagation();editManagedAccount(${a.fid},${a.idx})">수정</button>`}
+      <button class="btn bd xs" onclick="event.stopPropagation();deleteManagedAccount(${a.fid},${a.idx})">삭제</button>
     </div></td>
   </tr>`).join('')||'<tr><td colspan="8" class="emp">검색 결과 없음</td></tr>';
+}
+
+function getManagedAccount(fid,idx){
+  const f=D.franchises.find(x=>String(x.id)===String(fid));
+  if(!f||!f.deliveryAgencies||!f.deliveryAgencies[idx])return null;
+  return{franchise:f,account:f.deliveryAgencies[idx]};
+}
+function accountProofPreview(a){
+  const fileName=a.fileName||'';
+  const documentUrl=a.documentUrl||((fileName&&fileName!=='미첨부')?`/api/files/${encodeURIComponent(fileName)}`:'');
+  const isImage=/\.(png|jpe?g|gif|webp)$/i.test(documentUrl||fileName);
+  if(!documentUrl){
+    return `<div style="padding:18px;border:2px dashed #D1E8D1;border-radius:8px;text-align:center;background:#F9FAFB;font-weight:700;color:#9CA3AF">포스 사진 미첨부</div>`;
+  }
+  return `<div style="border:2px dashed #D1E8D1;border-radius:8px;padding:12px;text-align:center;background:#F9FAFB">
+    ${isImage
+      ? `<img src="${documentUrl}" alt="포스 증빙 사진" style="display:block;max-width:100%;max-height:280px;margin:0 auto 10px;border-radius:8px;border:1px solid #D1E8D1;object-fit:contain;background:#fff">`
+      : `<div style="font-weight:800;color:#153B15;margin-bottom:10px">이미지 미리보기를 지원하지 않는 파일입니다.</div>`}
+    <a class="btn bo xs" href="${documentUrl}" target="_blank" rel="noopener">원본 열기</a>
+  </div>`;
+}
+function accountEditForm(f,a){return`
+  <div class="fr2"><div class="fg"><label class="fl">가맹점명</label><input class="fi" value="${f.name||''}" disabled></div><div class="fg"><label class="fl">현재 상태</label><input class="fi" value="${a.accountStatus||'-'}" disabled></div></div>
+  <div class="fr2"><div class="fg"><label class="fl">배달대행사</label><input class="fi" id="mae-agency" value="${a.agency||''}"></div><div class="fg"><label class="fl">은행</label><input class="fi" id="mae-bank" value="${a.bankName||a.agency||''}"></div></div>
+  <div class="fr2"><div class="fg"><label class="fl">가상계좌번호 *</label><input class="fi" id="mae-account" value="${a.accountNo||''}" placeholder="숫자 또는 하이픈"></div><div class="fg"><label class="fl">예금주/대표자</label><input class="fi" id="mae-holder" value="${a.accountHolder||f.owner||''}"></div></div>
+  <div class="fg"><label class="fl">증빙파일명</label><input class="fi" value="${a.fileName||'미첨부'}" disabled></div>
+  <div class="fg"><label class="fl">포스 사진 확인</label>${accountProofPreview(a)}</div>
+  ${a.accountStatus==='승인대기'?`<div class="fg"><label class="fl">포스 사진 재업로드</label><input class="fi" id="mae-document-file" type="file" accept=".jpg,.jpeg,.png,.pdf,image/*,application/pdf"><div style="margin-top:6px;font-size:11px;color:#6B7280;font-weight:700">승인대기 상태에서만 증빙 사진을 교체할 수 있습니다.</div></div>`:''}`;}
+function getManagedAccountIdentity(a){
+  const source=a.source||'account_request';
+  const id=source==='delivery_account'?(a.id||a.accountId):a.requestId;
+  return{id,source};
+}
+async function editManagedAccount(fid,idx){
+  const found=getManagedAccount(fid,idx);
+  if(!found){await adminAlert('계좌 정보를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.');return;}
+  if(found.account.accountStatus==='승인완료'){await adminAlert('승인완료된 출금계좌는 수정할 수 없습니다.');return;}
+  openM('출금계좌 수정',accountEditForm(found.franchise,found.account),`<button class="btn bo" onclick="closeM()">취소</button><button class="btn bg2" onclick="saveManagedAccount(${fid},${idx})">저장</button>`);
+}
+async function saveManagedAccount(fid,idx){
+  const found=getManagedAccount(fid,idx);
+  if(!found){await adminAlert('계좌 정보를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.');return;}
+  const ident=getManagedAccountIdentity(found.account);
+  if(!ident.id){await adminAlert('DB 계좌 ID가 없습니다. 새로고침 후 다시 시도해주세요.');return;}
+  const accountNo=v('mae-account').trim();
+  if(!/^[0-9-]{8,30}$/.test(accountNo)){await adminAlert('가상계좌번호는 숫자와 하이픈 포함 8~30자리로 입력해주세요.');return;}
+  try{
+    const formData=new FormData();
+    formData.append('source',ident.source);
+    formData.append('deliveryAgencyName',v('mae-agency').trim());
+    formData.append('agencyName',v('mae-agency').trim());
+    formData.append('bankName',v('mae-bank').trim());
+    formData.append('accountNo',accountNo);
+    formData.append('accountHolder',v('mae-holder').trim());
+    formData.append('representativeName',v('mae-holder').trim());
+    const file=document.getElementById('mae-document-file')?.files?.[0];
+    if(file)formData.append('documentFile',file,file.name);
+    const res=await fetch(`/api/admin/accounts/${encodeURIComponent(ident.id)}?source=${encodeURIComponent(ident.source)}`,{
+      method:'PUT',
+      headers:{'Authorization':'Bearer mocked_admin_token'},
+      body:formData
+    });
+    if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error?.message||err.message||'계좌 수정에 실패했습니다.');}
+    await syncBackendTransactions();
+    closeM();
+    render();
+    toast('출금계좌가 수정되었습니다.');
+  }catch(e){
+    console.error(e);
+    await adminAlert(e.message||'계좌 수정에 실패했습니다.');
+  }
+}
+async function deleteManagedAccount(fid,idx){
+  const found=getManagedAccount(fid,idx);
+  if(!found){await adminAlert('계좌 정보를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.');return;}
+  const ident=getManagedAccountIdentity(found.account);
+  if(!ident.id){await adminAlert('DB 계좌 ID가 없습니다. 새로고침 후 다시 시도해주세요.');return;}
+  if(!await adminConfirm(`'${found.franchise.name}'의 ${found.account.agency||'출금계좌'} 계좌를 삭제하시겠습니까?\n삭제 후에는 앱과 관리자 목록에서 함께 사라집니다.`,'출금계좌 삭제'))return;
+  try{
+    const res=await fetch(`/api/admin/accounts/${encodeURIComponent(ident.id)}?source=${encodeURIComponent(ident.source)}`,{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer mocked_admin_token'}
+    });
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      const code=err.error?.code?` [${err.error.code}]`:'';
+      throw new Error((err.error?.message||err.message||'계좌 삭제에 실패했습니다.')+code);
+    }
+    await syncBackendTransactions();
+    closeM();
+    render();
+    toast('출금계좌가 삭제되었습니다.');
+  }catch(e){
+    console.error(e);
+    await adminAlert(e.message||'계좌 삭제에 실패했습니다.');
+  }
 }
 
 // ═══ 대리점 관리 ═══
@@ -893,26 +989,72 @@ function savAgF(id,val){D.agencyFeeRates[id]=parseFloat(val)||4.2;save();toast('
 function calcF(){const a=parseFloat((v('ca')||'').replace(/[^0-9.]/g,''))||0;if(!a){document.getElementById('cr').textContent='—';document.getElementById('cf').textContent='';return;}const r=D.defaultFeeRate/100;const ch=Math.round(a/(1-r));document.getElementById('cr').textContent=ch.toLocaleString()+'원';document.getElementById('cf').textContent='수수료: '+(ch-a).toLocaleString()+'원 ('+D.defaultFeeRate+'%)';}
 
 // ═══ 무이자 할부 ═══
+const DEFAULT_CARD_COMPANIES=['비씨카드','신한카드','삼성카드','현대카드','롯데카드','국민카드','우리카드','수협카드','농협카드','하나카드'];
+function installmentRows(){
+  if(Array.isArray(D.installments)){
+    return D.installments.map((item,i)=>({
+      cardCompany:item.cardCompany,
+      months:Array.isArray(item.months)?item.months.map(Number):[],
+      active:item.active!==false,
+      displayOrder:item.displayOrder||i+1
+    }));
+  }
+  if(D.installments&&typeof D.installments==='object'){
+    return Object.entries(D.installments).map(([card,data],i)=>({
+      cardCompany:card,
+      months:Array.isArray(data.months)?data.months.map(Number):Array.isArray(data.curr)?data.curr.map(Number):[],
+      active:data.active!==false,
+      displayOrder:data.displayOrder||i+1
+    }));
+  }
+  return [];
+}
 function pgInst(){
   const months=[2,3,4,5,6];
   const now=new Date();
-  const labels={prev:`전월 (${now.getMonth()}월)`,curr:`금월 (${now.getMonth()+1}월)`,next:`익월 (${now.getMonth()+2}월)`};
+  const rows=installmentRows();
+  const cards=rows.length?rows:DEFAULT_CARD_COMPANIES.map((card,i)=>({cardCompany:card,months:[],active:false,displayOrder:i+1}));
+  const label=`금월 (${now.getMonth()+1}월)`;
   return`
-  <div class="aw aw-w">💡 각 월별로 무이자 할부 개월 수를 설정할 수 있습니다.</div>
+  <div class="aw aw-w">💡 이번 달 무이자 할부 개월 수만 설정합니다. 정책이 없으면 앱에는 "무이자할부 정책이 없습니다."로 표시됩니다.</div>
   <div class="card"><div class="ch"><span style="font-weight:700;font-size:14px">카드사별 무이자 할부 설정</span><button class="btn bg2 sm" onclick="savInst()">전체 저장</button></div>
   <div style="padding:14px;overflow-x:auto">
-    <div class="inst-grid" style="min-width:600px">
+    <div class="inst-grid" style="min-width:520px;grid-template-columns:120px 1fr">
       <div class="inst-hdr" style="text-align:left">카드사</div>
-      <div class="inst-hdr">${labels.prev}</div>
-      <div class="inst-hdr">${labels.curr}</div>
-      <div class="inst-hdr">${labels.next}</div>
-      ${Object.entries(D.installments).map(([card,data])=>`
+      <div class="inst-hdr">${label}</div>
+      ${cards.map((item,idx)=>{
+        const card=item.cardCompany;
+        const key=card.replace(/[^a-zA-Z0-9가-힣]/g,'_');
+        const checkedMonths=Array.isArray(item.months)?item.months.map(Number):[];
+        return`
         <div class="inst-cell" style="font-weight:600;font-size:12px">${card}</div>
-        ${['prev','curr','next'].map(m=>`<div class="inst-cell">${months.map(mo=>`<label class="ci"><input type="checkbox" id="ci-${m}-${card.replace(/[^a-zA-Z0-9]/g,'_')}-${mo}" ${(data[m]||[]).includes(mo)?'checked':''}>${mo}개</label>`).join('')}</div>`).join('')}
-      `).join('')}
+        <div class="inst-cell" data-card="${card}" data-order="${item.displayOrder||idx+1}">
+          ${months.map(mo=>`<label class="ci"><input type="checkbox" class="ci-month" data-card="${card}" data-order="${item.displayOrder||idx+1}" value="${mo}" ${checkedMonths.includes(mo)?'checked':''}>${mo}개</label>`).join('')}
+        </div>`;
+      }).join('')}
     </div>
   </div></div>`;}
-function savInst(){const months=[2,3,4,5,6];Object.keys(D.installments).forEach(card=>{const key=card.replace(/[^a-zA-Z0-9]/g,'_');['prev','curr','next'].forEach(m=>{D.installments[card][m]=months.filter(mo=>{const el=document.getElementById(`ci-${m}-${key}-${mo}`);return el&&el.checked;});});});save();toast('무이자 할부 설정 저장');}
+async function savInst(){
+  const cardMap=new Map();
+  document.querySelectorAll('.ci-month').forEach(el=>{
+    const card=el.dataset.card;
+    if(!cardMap.has(card))cardMap.set(card,{cardCompany:card,months:[],active:false,displayOrder:Number(el.dataset.order||0)});
+    if(el.checked)cardMap.get(card).months.push(Number(el.value));
+  });
+  const items=[...cardMap.values()].map(item=>({...item,months:[...new Set(item.months)].sort((a,b)=>a-b),active:item.months.length>0}));
+  try{
+    const res=await fetch('/api/admin/installments',{method:'PUT',headers:{'Authorization':'Bearer mocked_admin_token','Content-Type':'application/json'},body:JSON.stringify({items})});
+    if(!res.ok)throw new Error('무이자 할부 저장에 실패했습니다.');
+    const json=await res.json();
+    D.installments=Array.isArray(json.data)?json.data:items;
+    save();
+    toast('무이자 할부 설정 저장');
+    renderPage();
+  }catch(e){
+    console.error(e);
+    toast(e.message||'무이자 할부 저장 실패');
+  }
+}
 
 // ═══ 배너 ═══
 function pgBanners(){const fl=D.banners.filter(b=>b.type===bannerTab);return`
@@ -949,18 +1091,41 @@ async function syncBackendFranchises() {
     if (!res.ok) return;
     const json = await res.json();
     const items = json.data || [];
-    items.forEach(item => {
-      const idx = D.franchises.findIndex(f => f.email === item.email || (f.bizNo === item.bizNo && f.name === item.name));
-      if (idx !== -1) {
-        D.franchises[idx].status = item.status;
-      } else {
-        D.franchises.unshift(item);
-      }
-    });
+    D.franchises = items;
     save();
     renderPage();
   } catch (e) {
     console.error("Failed to sync backend franchises:", e);
+  }
+}
+
+async function syncBackendTransactions() {
+  try {
+    const res = await fetch('/api/admin/bootstrap', {
+      headers: { 'Authorization': 'Bearer mocked_admin_token' }
+    });
+    if (!res.ok) {
+      D.franchises = [];
+      D.payments = [];
+      D.pgSettlements = [];
+      save();
+      return;
+    }
+    const json = await res.json();
+    const data = json.data || {};
+    D.franchises = Array.isArray(data.franchises) ? data.franchises : [];
+    D.agencies = Array.isArray(data.agencies) ? data.agencies : D.agencies;
+    D.deliveryAgencyList = Array.isArray(data.deliveryAgencies) ? data.deliveryAgencies : D.deliveryAgencyList;
+    D.installments = Array.isArray(data.installments) ? data.installments : [];
+    D.payments = Array.isArray(data.payments) ? data.payments : [];
+    D.pgSettlements = Array.isArray(data.pgSettlements) ? data.pgSettlements : [];
+    save();
+  } catch (e) {
+    console.error("Failed to sync backend transactions:", e);
+    D.franchises = [];
+    D.payments = [];
+    D.pgSettlements = [];
+    save();
   }
 }
 
@@ -976,12 +1141,21 @@ async function syncBackendAccounts() {
       const f = D.franchises.find(x => x.bizNo === req.businessNumber || x.name === req.franchiseName);
       if (f) {
         if (!f.deliveryAgencies) f.deliveryAgencies = [];
-        const exists = f.deliveryAgencies.some(da => da.accountNo === req.assignedVirtualAccount?.accountNumber || da.agency === (req.bankCode === '088' ? '신한은행' : '우리은행'));
+        const exists = f.deliveryAgencies.some(da => (
+          req.requestId && da.requestId === req.requestId
+        ) || (
+          req.accountNo && da.accountNo === req.accountNo
+        ) || (
+          req.documentUrl && da.documentUrl === req.documentUrl
+        ));
         if (!exists) {
           f.deliveryAgencies.push({
-            agency: req.bankCode === '088' ? '신한은행' : '우리은행',
-            accountNo: req.assignedVirtualAccount?.accountNumber || '대기중',
-            fileName: req.documentUrl.split('/').pop(),
+            agency: req.deliveryAgencyName || req.bankName || (req.bankCode === '088' ? '신한은행' : '우리은행'),
+            bankName: req.bankName || (req.bankCode === '088' ? '신한은행' : '우리은행'),
+            bankCode: req.bankCode || '',
+            accountNo: req.accountNo || req.assignedVirtualAccount?.accountNumber || '대기중',
+            fileName: req.documentUrl ? req.documentUrl.split('/').pop() : '미첨부',
+            documentUrl: req.documentUrl || '',
             accountStatus: req.status === 'PENDING' ? '승인대기' : (req.status === 'APPROVED' ? '승인완료' : '반려'),
             reqDate: req.submittedAt.slice(0, 10),
             requestId: req.requestId
@@ -1030,72 +1204,103 @@ async function changeFrStatus(id,newStatus,selectEl){
 }
 
 async function approveAccount(fid,idx){
-  const f=D.franchises.find(x=>x.id===fid);
+  const f=D.franchises.find(x=>String(x.id)===String(fid));
+  if(!f||!f.deliveryAgencies||!f.deliveryAgencies[idx]){await adminAlert('계좌 요청 정보를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.');return;}
   const da=f.deliveryAgencies[idx];
-  if(!confirm(`'${f.name}'의 ${da.agency} 계좌를 승인하시겠습니까?`))return;
+  if(!await adminConfirm(`'${f.name}'의 ${da.agency} 계좌를 승인하시겠습니까?`))return;
+  let requestId=da.requestId;
+  if(!requestId){
+    await syncBackendTransactions();
+    const freshF=D.franchises.find(x=>String(x.id)===String(fid));
+    const fresh=(freshF?.deliveryAgencies||[]).find(item=>item.accountStatus==='승인대기'&&(item.accountNo===da.accountNo||item.agency===da.agency));
+    requestId=fresh?.requestId;
+  }
+  if(!requestId){await adminAlert('DB 승인 요청 ID가 없습니다. 화면을 새로고침한 뒤 다시 시도해주세요.');return;}
 
-  if (da.requestId) {
-    try {
-      await fetch('/api/admin/accounts/approve', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer mocked_admin_token',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          requestId: da.requestId,
-          action: 'APPROVED',
-          assignedVirtualAccount: {
-            bankCode: da.agency === '신한은행' ? '088' : '020',
-            bankName: da.agency,
-            accountNumber: '562-901-' + Math.floor(100000 + Math.random() * 900000),
-            accountHolder: `(주)이츠페이_${f.name}`
-          }
-        })
-      });
-    } catch (e) {
-      console.error(e);
+  try {
+    const res=await fetch('/api/admin/accounts/approve', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer mocked_admin_token',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        requestId,
+        action: 'APPROVED',
+        assignedVirtualAccount: {
+          bankCode: da.bankCode || (da.bankName === '신한은행' ? '088' : '020'),
+          bankName: da.bankName || da.agency,
+          accountNumber: da.accountNo || `562-901-${Math.floor(100000 + Math.random() * 900000)}`,
+          accountHolder: `(주)이츠페이_${f.name}`
+        }
+      })
+    });
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      throw new Error(err.error?.message||err.message||'계좌 승인 처리에 실패했습니다.');
     }
+  } catch (e) {
+    console.error(e);
+    await adminAlert(e.message||'계좌 승인 처리에 실패했습니다.');
+    return;
   }
 
-  da.accountStatus='승인완료';
-  if(f.status==='승인 대기')f.status='정상 승인';
-  save();render();toast(`${f.name} 계좌 승인 완료`);
+  await syncBackendTransactions();
+  closeM();
+  render();
+  toast(`${f.name} 계좌 승인 완료`);
 }
 
 async function rejectAccount(fid,idx){
-  const f=D.franchises.find(x=>x.id===fid);
+  const f=D.franchises.find(x=>String(x.id)===String(fid));
+  if(!f||!f.deliveryAgencies||!f.deliveryAgencies[idx]){await adminAlert('계좌 요청 정보를 찾지 못했습니다. 새로고침 후 다시 시도해주세요.');return;}
   const da=f.deliveryAgencies[idx];
-  const r=prompt('반려 사유를 입력하세요:','');if(r===null)return;
+  const r=await adminPrompt('반려 사유를 입력하세요:','');if(r===null)return;
+  let requestId=da.requestId;
+  if(!requestId){
+    await syncBackendTransactions();
+    const freshF=D.franchises.find(x=>String(x.id)===String(fid));
+    const fresh=(freshF?.deliveryAgencies||[]).find(item=>item.accountStatus==='승인대기'&&(item.accountNo===da.accountNo||item.agency===da.agency));
+    requestId=fresh?.requestId;
+  }
+  if(!requestId){await adminAlert('DB 승인 요청 ID가 없습니다. 화면을 새로고침한 뒤 다시 시도해주세요.');return;}
 
-  if (da.requestId) {
-    try {
-      await fetch('/api/admin/accounts/approve', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer mocked_admin_token',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          requestId: da.requestId,
-          action: 'REJECTED',
-          rejectionReason: r
-        })
-      });
-    } catch (e) {
-      console.error(e);
+  try {
+    const res=await fetch('/api/admin/accounts/approve', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer mocked_admin_token',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        requestId,
+        action: 'REJECTED',
+        rejectionReason: r
+      })
+    });
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      throw new Error(err.error?.message||err.message||'계좌 반려 처리에 실패했습니다.');
     }
+  } catch (e) {
+    console.error(e);
+    await adminAlert(e.message||'계좌 반려 처리에 실패했습니다.');
+    return;
   }
 
-  da.accountStatus='반려';
-  da.rejectReason=r;
-  save();render();toast(`${f.name} 계좌 반려`);
+  await syncBackendTransactions();
+  closeM();
+  render();
+  toast(`${f.name} 계좌 반려`);
 }
 
-load();render();
-syncBackendTransactions();
-syncBackendFranchises();
-syncBackendAccounts();
+async function bootAdmin(){
+  load();
+  await syncBackendTransactions();
+  render();
+}
+bootAdmin();
 </script>
 </body>
 </html>
+

@@ -1,904 +1,2075 @@
+﻿const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+
 const express = require('express');
 const multer = require('multer');
-const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
 
-// Load .env file manually if exists for seamless environment configuration
-if (fs.existsSync(path.join(__dirname, '.env'))) {
-  const envContent = fs.readFileSync(path.join(__dirname, '.env'), 'utf8');
-  envContent.split(/\r?\n/).forEach(line => {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) return;
-    const parts = trimmed.split('=');
-    if (parts.length >= 2) {
-      const key = parts[0].trim();
-      const val = parts.slice(1).join('=').trim().replace(/(^['"]|['"]$)/g, '');
-      process.env[key] = val;
-    }
-  });
+const { createPool } = require('./db/pool');
+const { createRepository } = require('./db/repository');
+
+loadEnv();
+
+const REQUIRED_ENV = ['DATABASE_URL', 'JWT_SECRET', 'EATSPAY_HMAC_SECRET', 'ADMIN_ROLLBACK_TOKEN'];
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    throw new Error(`${key} is required for the production PostgreSQL backend.`);
+  }
 }
 
 const app = express();
-const PORT = 3000;
-const SECRET_KEY = 'eatspay-secret-key-2026';
+const PORT = Number(process.env.PORT || 3000);
+const pool = createPool();
+const repo = createRepository(pool);
+const DEFAULT_AGENCY_NAME = '이츠페이 본사';
+const dbBootstrapPromise = (async () => {
+  await pool.query('ALTER TABLE users ALTER COLUMN franchise_id DROP NOT NULL');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS biz_doc_file_key TEXT');
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS pos_file_key TEXT');
+  await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS card_company TEXT');
+  await pool.query('ALTER TABLE account_requests ADD COLUMN IF NOT EXISTS bank_name TEXT');
+  await pool.query('ALTER TABLE account_requests ADD COLUMN IF NOT EXISTS delivery_agency_name TEXT');
+  await pool.query('ALTER TABLE account_requests ADD COLUMN IF NOT EXISTS account_no TEXT');
+  await pool.query("ALTER TABLE users ALTER COLUMN role SET DEFAULT 'OWNER'");
+  await pool.query("UPDATE users SET role = 'OWNER', updated_at = now() WHERE role = 'OWNER_PENDING'");
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS delivery_agencies (
+      id BIGSERIAL PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL DEFAULT 'active',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query("ALTER TABLE delivery_agencies ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'");
+  await pool.query("ALTER TABLE delivery_agencies ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0");
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interest_free_installments (
+      card_company TEXT PRIMARY KEY,
+      months INTEGER[] NOT NULL DEFAULT '{}',
+      active BOOLEAN NOT NULL DEFAULT true,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      data JSONB NOT NULL DEFAULT '{}'::jsonb,
+      read_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS push_tokens (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token TEXT NOT NULL UNIQUE,
+      platform TEXT,
+      enabled BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, read_at, created_at DESC)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id, enabled)');
+  await seedDeliveryAgencies();
+})();
+const uploadDir = path.join(__dirname, 'uploads');
+fs.mkdirSync(uploadDir, { recursive: true });
+app.set('trust proxy', 1);
+const GH_PAYMENTS_BASE_URL = (process.env.GH_PAYMENTS_BASE_URL || 'https://api.ghpayments.kr').replace(/\/$/, '');
 
-// Middleware configurations
-app.use(express.json());
+app.get('/healthz', (req, res) => {
+  return res.status(200).json({
+    ok: true,
+    service: 'eatspay',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.use((req, res, next) => {
+  const allowedOrigins = (process.env.CORS_ORIGIN || '*')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+  const requestOrigin = req.headers.origin;
+  const allowAnyOrigin = allowedOrigins.includes('*');
+
+  if (allowAnyOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin || '*');
+  } else if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+  }
+
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-EATSPAY-SIGNATURE');
+  res.setHeader('Access-Control-Max-Age', '86400');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  return next();
+});
+
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// Serve static frontend assets from the current directory
+app.use((req, res, next) => {
+  if (/\.(html|js|css)$/i.test(req.path) || req.path === '/') {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
 app.use(express.static(__dirname));
+app.use('/uploads', express.static(uploadDir));
 
-// Route to serve the main mobile app (index.html)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedExtensions.includes(ext)) return cb(null, true);
+    return cb(new Error('INVALID_FILE_FORMAT'), false);
+  }
+});
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Route to serve the admin dashboard panel explicitly
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '이츠페이_관리자_시스템_10.html'));
 });
 
-// Multitpart upload config (Store files in-memory for volatile storage)
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedExtensions.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('INVALID_FILE_FORMAT'), false);
-    }
-  }
-});
-
-// ==========================================
-// In-Memory volatile DB Initial Data
-// ==========================================
-const db = {
-  users: [
-    {
-      id: 9999,
-      email: 'admin',
-      password: '1234',
-      name: '관리자',
-      franchiseName: '이츠페이 테스트 가맹점',
-      franchiseId: 9999,
-      role: 'OWNER',
-      balance: 1000000,
-      phone: '010-1234-5678',
-      address: '서울특별시 강남구 테헤란로 123',
-      tel: '02-123-4567',
-      businessNumber: '120-00-12345',
-      cards: []
-    },
-    {
-      id: 4820,
-      email: 'franchise_owner@eatspay.com',
-      password: 'Password123!',
-      name: '홍길동',
-      franchiseName: '이츠분식 강남점',
-      franchiseId: 1052,
-      role: 'OWNER',
-      balance: 145398 // In-memory deposit/balance
-    },
-    {
-      id: 4821,
-      email: 'social_user@eatspay.com',
-      password: 'Password123!',
-      name: '김철수',
-      franchiseName: null,
-      franchiseId: null,
-      role: 'OWNER_PENDING',
-      balance: 0
-    },
-    {
-      id: 1,
-      email: 'admin001@eatspay.com',
-      password: 'AdminPassword123!',
-      name: '김민준',
-      role: 'ADMIN',
-      balance: 0
-    }
-  ],
-  accountRequests: [
-    {
-      requestId: 'REQ-20260528-0912',
-      franchiseId: 1052,
-      franchiseName: '이츠분식 강남점',
-      businessNumber: '120-00-12345',
-      bankCode: '088',
-      representativeName: '홍길동',
-      status: 'PENDING',
-      documentUrl: 'https://storage.eatspay.co.kr/documents/biz_cert_1052.jpg',
-      submittedAt: '2026-05-28T15:10:08+09:00',
-      assignedVirtualAccount: null,
-      rejectionReason: null
-    }
-  ],
-  transactions: [
-    {
-      transactionId: 'TXN-20260528-9840294',
-      franchiseId: 1052,
-      type: 'CHARGE',
-      amount: 100000,
-      fee: 4602,
-      totalAmount: 104602,
-      method: 'CARD',
-      cardDetails: '국민카드 (****-****-1234)',
-      status: 'SUCCESS',
-      createdAt: '2026-05-28T14:20:00+09:00'
-    },
-    {
-      transactionId: 'TXN-20260525-1102934',
-      franchiseId: 1052,
-      type: 'CHARGE',
-      amount: 50000,
-      fee: 2301,
-      totalAmount: 52301,
-      method: 'VIRTUAL_ACCOUNT',
-      cardDetails: null,
-      status: 'SUCCESS',
-      createdAt: '2026-05-25T09:12:30+09:00'
-    }
-  ]
-};
-
-// ==========================================
-// Helper Utilities & Logging
-// ==========================================
-const getTimestamp = () => new Date().toISOString();
-
-const logAction = (tag, message, metadata = {}) => {
-  console.log(`[${getTimestamp()}] [${tag}] ${message}`, JSON.stringify(metadata));
-};
-
-const sendError = (res, statusCode, code, message, details = []) => {
-  logAction('ERROR', `${statusCode} - ${code} - ${message}`, { details });
-  return res.status(statusCode).json({
-    success: false,
-    error: {
-      code,
-      message,
-      details,
-      timestamp: getTimestamp()
-    }
-  });
-};
-
-// Middleware: Authenticate Bearer JWT or Mock token
-const authenticate = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return sendError(res, 401, 'UNAUTHORIZED', '인증 토큰이 누락되었거나 형식이 유효하지 않습니다.');
-  }
-  const token = authHeader.split(' ')[1];
-  // Simple Mock token verify based on roles
-  const user = db.users.find(u => token.includes(u.email) || token === 'mocked_jwt_token_here' && u.role === 'OWNER' || token === 'mocked_admin_token' && u.role === 'ADMIN');
-  if (!user) {
-    // Default to first user if token is mock
-    req.user = db.users[0];
-  } else {
-    req.user = user;
-  }
-  next();
-};
-
-// Middleware: Admin Authenticate
-const authenticateAdmin = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return sendError(res, 401, 'UNAUTHORIZED', '인증 토큰이 누락되었습니다.');
-  }
-  const token = authHeader.split(' ')[1];
-  const user = db.users.find(u => (token.includes(u.email) || token === 'mocked_admin_token') && u.role === 'ADMIN');
-  if (!user) {
-    return sendError(res, 403, 'ACCESS_DENIED', '본사 관리자 권한이 없는 접근입니다.');
-  }
-  req.user = user;
-  next();
-};
-
-// Middleware: HMAC Signature Validation
-const verifySignature = (req, res, next) => {
-  const signature = req.headers['x-eatspay-signature'];
-  const timestamp = req.headers['x-eatspay-timestamp'];
-
-  if (!signature || !timestamp) {
-    return sendError(res, 403, 'SIGNATURE_VERIFICATION_FAILED', '보안용 HMAC 헤더가 누락되었습니다.');
-  }
-
-  // Allow bypass for local test signature
-  if (signature === 'mocked_signature') {
-    return next();
-  }
-
-  // Check if timestamp is within 5 minutes (300,000 ms) for replay attack prevention
-  const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - parseInt(timestamp, 10)) > 300) {
-    return sendError(res, 403, 'SIGNATURE_VERIFICATION_FAILED', '요청 타임스탬프 허용 오차 한계를 초과했습니다.');
-  }
-
-  // Calculate HMAC using Secret Key and request body
-  const rawBody = JSON.stringify(req.body);
-  const calculatedSig = crypto
-    .createHmac('sha256', SECRET_KEY)
-    .update(rawBody + timestamp)
-    .digest('hex');
-
-  // Allow 'mocked_signature' for testing ease
-  if (signature !== 'mocked_signature' && signature !== calculatedSig) {
-    return sendError(res, 403, 'SIGNATURE_VERIFICATION_FAILED', '무결성 해시 서명이 올바르지 않습니다.');
-  }
-
-  next();
-};
-
-// ==========================================
-// API Endpoints
-// ==========================================
-
-/**
- * 2.1 A. 일반 로그인 (POST /api/auth/login)
- */
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  logAction('AUTH', '로그인 요청', { email });
-
   if (!email || !password) {
-    return sendError(res, 400, 'BAD_REQUEST', '이메일과 비밀번호는 필수 입력 항목입니다.');
+    return sendError(res, 400, 'BAD_REQUEST', 'email and password are required.');
   }
 
-  const user = db.users.find(u => u.email === email && u.password === password);
-  if (!user) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', '이메일 또는 비밀번호가 일치하지 않습니다.');
+  const user = await repo.findUserByEmail(email);
+  if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid email or password.');
   }
 
   return res.status(200).json({
     success: true,
     data: {
-      accessToken: `jwt_token_${user.email}_session`,
+      accessToken: signToken(user),
       tokenType: 'Bearer',
       expiresIn: 86400,
-      user: {
-        id: user.id,
-        name: user.name,
-        franchiseName: user.franchiseName,
-        role: user.role
-      }
+      user: publicUser(user)
     }
   });
-});
+}));
 
-/**
- * 2.1 A. 사업자등록번호 검증 및 국세청 조회 시뮬레이션 (POST /api/auth/verify-business)
- */
-app.post('/api/auth/verify-business', async (req, res) => {
+app.post('/api/auth/verify-business', asyncHandler(async (req, res) => {
   const { businessNumber } = req.body;
-  logAction('AUTH', '사업자등록번호 조회 요청', { businessNumber });
-
   if (!businessNumber) {
-    return sendError(res, 400, 'BAD_REQUEST', '사업자등록번호를 입력해주세요.');
+    return sendError(res, 400, 'BAD_REQUEST', '사업자등록번호를 입력해 주세요.');
   }
 
   const clean = businessNumber.replace(/[^0-9]/g, '');
   if (clean.length !== 10) {
-    return sendError(res, 400, 'INVALID_FORMAT', '사업자등록번호는 10자리 숫자여야 합니다.');
+    return sendError(res, 400, 'INVALID_FORMAT', '사업자등록번호 10자리를 입력해 주세요.');
   }
 
-  // Check if already registered
-  const duplicate = db.users.find(u => u.businessNumber && u.businessNumber.replace(/[^0-9]/g, '') === clean);
+  const duplicate = await repo.findUserByBusinessNumber(clean);
   if (duplicate) {
     return sendError(res, 409, 'ALREADY_EXISTS', '이미 가입된 사업자등록번호입니다.');
   }
 
-  // 1. Real-time National Tax Service (NTS) Public API Integration
-  const ntsServiceKey = process.env.NTS_SERVICE_KEY;
-  if (ntsServiceKey) {
-    try {
-      logAction('AUTH', '국세청 실시간 API 조회 시도', { clean });
-      const apiUrl = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${ntsServiceKey}`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ b_no: [clean] })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const bizData = result.data && result.data[0];
-        if (bizData) {
-          if (bizData.b_stt_cd === '01') { // 01: 계속사업자 (정상영업)
-            return res.status(200).json({
-              success: true,
-              message: `[국세청 실시간 확인 완료] ${bizData.tax_type || '정상 가맹점'}으로 확인되었습니다.`,
-              data: {
-                businessNumber: businessNumber,
-                status: '정상영업',
-                taxType: bizData.tax_type
-              }
-            });
-          } else if (bizData.b_stt_cd === '02' || bizData.b_stt_cd === '03') {
-            const statusText = bizData.b_stt || '휴/폐업 가맹점';
-            return sendError(res, 400, 'VERIFICATION_FAILED', `국세청 조회 결과 가입할 수 없는 사업자 상태입니다. (상태: ${statusText})`);
-          } else {
-            // Unregistered or deleted business number
-            return sendError(res, 400, 'VERIFICATION_FAILED', bizData.tax_type || '국세청에 등록되지 않은 사업자등록번호입니다.');
-          }
-        }
-      }
-      logAction('AUTH', '국세청 API 응답 오류 혹은 데이터 없음. 로컬 시뮬레이션 폴백 실행');
-    } catch (apiErr) {
-      console.error('NTS API Connection Error:', apiErr);
-      logAction('AUTH', '국세청 API 연결 에러. 로컬 시뮬레이션 폴백 실행');
-    }
-  }
-
-  // 2. Standard Korean business registration checksum validation (Option 2 Checklist Fallback)
-  const mockBypasses = ['1200012345', '1200054321', '1200099999', '1200000000'];
-  let isValid = mockBypasses.includes(clean);
-
-  if (!isValid) {
-    const weights = [1, 3, 7, 1, 3, 7, 1, 3, 5];
-    let sum = 0;
-    for (let i = 0; i < 8; i++) {
-      sum += parseInt(clean[i], 10) * weights[i];
-    }
-    const val = parseInt(clean[8], 10) * weights[8];
-    sum += Math.floor(val / 10) + (val % 10);
-    const checkDigit = (10 - (sum % 10)) % 10;
-    isValid = (checkDigit === parseInt(clean[9], 10));
-  }
-
-  if (!isValid) {
-    return sendError(res, 400, 'VERIFICATION_FAILED', '국세청에 등록되지 않았거나 유효하지 않은 사업자등록번호입니다.');
+  if (!(await verifyBusinessNumber(clean))) {
+    return sendError(res, 400, 'VERIFICATION_FAILED', '사업자등록번호를 확인할 수 없습니다.');
   }
 
   return res.status(200).json({
     success: true,
-    message: '국세청 기준 정상 영업 가맹점으로 정상 조회되었습니다.',
-    data: {
-      businessNumber: businessNumber,
-      status: '정상영업',
-      taxType: '일반과세자'
-    }
+    message: '사업자등록번호가 확인되었습니다.',
+    data: { businessNumber, status: 'ACTIVE', taxType: 'GENERAL' }
   });
-});
+}));
 
-/**
- * 2.1 C. 일반 회원가입 (POST /api/auth/register)
- */
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', upload.fields([
+  { name: 'bizLicenseFile', maxCount: 1 }
+]), asyncHandler(async (req, res) => {
   const { email, password, phone, storeName, ceoName, address, tel, businessNumber } = req.body;
-  logAction('AUTH', '회원가입 요청', { email, storeName });
-
   if (!email || !password || !storeName || !ceoName || !businessNumber) {
-    return sendError(res, 400, 'BAD_REQUEST', '이메일, 비밀번호, 상호명, 대표자명, 사업자등록번호는 필수 항목입니다.');
+    return sendError(res, 400, 'BAD_REQUEST', '회원가입 필수 정보를 모두 입력해 주세요.');
   }
 
-  const existingUser = db.users.find(u => u.email === email);
+  const existingUser = await repo.findUserByEmail(email);
   if (existingUser) {
-    return sendError(res, 409, 'ALREADY_EXISTS', '이미 사용 중인 이메일 주소입니다.');
+    return sendError(res, 409, 'ALREADY_EXISTS', '이미 사용 중인 아이디입니다.');
   }
 
-  const nextUserId = Math.max(...db.users.map(u => u.id)) + 1;
-  const nextFranchiseId = Math.max(...db.users.map(u => u.franchiseId || 0)) + 1;
+  const existingBusiness = await repo.findUserByBusinessNumber(businessNumber);
+  if (existingBusiness) {
+    return sendError(res, 409, 'ALREADY_EXISTS', '이미 가입된 사업자등록번호입니다.');
+  }
 
-  const newUser = {
-    id: nextUserId,
+  const defaultAgency = await repo.ensureDefaultAgency();
+  const bizLicenseFile = req.files?.bizLicenseFile?.[0] || null;
+  const bizDoc = bizLicenseFile ? await persistUpload(bizLicenseFile, null) : null;
+  const user = await repo.createUser({
     email,
-    password,
+    passwordHash: await hashPassword(password),
     name: ceoName,
     franchiseName: storeName,
-    franchiseId: nextFranchiseId,
-    role: 'OWNER_PENDING',
-    balance: 0,
     phone,
     address,
     tel,
     businessNumber,
-    cards: []
-  };
-
-  db.users.push(newUser);
+    agencyId: defaultAgency?.id || null,
+    bizDocFileKey: bizDoc?.fileKey || null
+  });
 
   return res.status(201).json({
     success: true,
-    message: '회원가입이 완료되었습니다. 관리자 승인 대기 중입니다.',
+    message: '가입이 완료되었습니다.',
     data: {
-      id: newUser.id,
-      email: newUser.email,
-      storeName: newUser.franchiseName,
-      role: newUser.role
+      id: user.id,
+      email: user.email,
+      storeName: user.franchiseName,
+      role: user.role
     }
   });
-});
+}));
 
-
-/**
- * 2.1 B. 소셜 로그인 (POST /api/auth/social)
- */
-app.post('/api/auth/social', (req, res) => {
-  const { provider, accessToken } = req.body;
-  logAction('AUTH', '소셜 로그인 요청', { provider });
-
+app.post('/api/auth/social', asyncHandler(async (req, res) => {
+  const { provider } = req.body;
   const allowedProviders = ['KAKAO', 'NAVER', 'GOOGLE'];
   if (!provider || !allowedProviders.includes(provider.toUpperCase())) {
-    return sendError(res, 400, 'INVALID_PROVIDER', '지원하지 않는 소셜 로그인 제공업체입니다.', [
-      { field: 'provider', reason: 'KAKAO, NAVER, GOOGLE만 허용됩니다.' }
-    ]);
+    return sendError(res, 400, 'INVALID_PROVIDER', 'Unsupported social provider.');
   }
 
-  // Mock mapping for 김철수 based on social login provider
-  const user = db.users.find(u => u.role === 'OWNER_PENDING') || db.users[1];
+  return sendError(res, 501, 'SOCIAL_LOGIN_NOT_CONFIGURED', 'Real social OAuth integration is not configured yet.');
+}));
+
+app.get('/api/auth/me', authenticate, asyncHandler(async (req, res) => {
+  const user = await repo.findUserById(req.user.id);
+  if (!user) {
+    return sendError(res, 404, 'USER_NOT_FOUND', 'User was not found.');
+  }
 
   return res.status(200).json({
     success: true,
     data: {
-      isRegistered: true,
-      accessToken: `social_jwt_token_${provider}_session`,
-      tokenType: 'Bearer',
-      expiresIn: 86400,
-      user: {
-        id: user.id,
-        name: user.name,
-        franchiseName: user.franchiseName,
-        role: user.role
-      }
+      user: publicUser(user)
     }
   });
-});
+}));
 
-/**
- * 2.2 가상계좌 심사 등록 요청 및 사진 업로드 (POST /api/franchise/accounts)
- */
+app.get('/api/notifications/unread', authenticate, asyncHandler(async (req, res) => {
+  const notifications = await repo.listUnreadNotifications(req.user.id);
+  return res.status(200).json({
+    success: true,
+    data: notifications
+  });
+}));
+
+app.post('/api/notifications/read', authenticate, asyncHandler(async (req, res) => {
+  const marked = await repo.markNotificationsRead(req.user.id, req.body?.ids || []);
+  return res.status(200).json({
+    success: true,
+    data: marked
+  });
+}));
+
+app.post('/api/push-token', authenticate, asyncHandler(async (req, res) => {
+  const token = String(req.body?.token || '').trim();
+  if (!token) {
+    return sendError(res, 400, 'MISSING_PUSH_TOKEN', 'push token is required.');
+  }
+  await repo.upsertPushToken(req.user.id, token, req.body?.platform || null);
+  return res.status(200).json({
+    success: true,
+    message: 'Push token registered.'
+  });
+}));
+
+app.patch('/api/auth/me', authenticate, asyncHandler(async (req, res) => {
+  const user = await repo.findUserById(req.user.id);
+  if (!user) {
+    return sendError(res, 404, 'USER_NOT_FOUND', 'User was not found.');
+  }
+
+  const { phone, currentPassword, newPassword } = req.body || {};
+  const fields = {};
+  if (phone !== undefined) {
+    const cleanPhone = String(phone || '').trim();
+    if (cleanPhone && cleanPhone.replace(/[^0-9]/g, '').length < 10) {
+      return sendError(res, 400, 'INVALID_PHONE', 'A valid phone number is required.');
+    }
+    fields.phone = cleanPhone || null;
+  }
+
+  if (newPassword !== undefined && String(newPassword).length > 0) {
+    if (String(newPassword).length < 4) {
+      return sendError(res, 400, 'INVALID_PASSWORD', 'Password must be at least 4 characters.');
+    }
+    if (!currentPassword || !user.passwordHash || !(await verifyPassword(currentPassword, user.passwordHash))) {
+      return sendError(res, 401, 'INVALID_CURRENT_PASSWORD', 'Current password is invalid.');
+    }
+    fields.passwordHash = await hashPassword(newPassword);
+  }
+
+  if (!Object.keys(fields).length) {
+    return sendError(res, 400, 'NO_CHANGES', 'No profile changes were submitted.');
+  }
+
+  const updated = await repo.updateUserProfile(user.id, fields);
+  return res.status(200).json({
+    success: true,
+    data: {
+      user: publicUser(updated)
+    }
+  });
+}));
+
 app.post('/api/franchise/accounts', authenticate, (req, res) => {
-  upload.single('documentFile')(req, res, function (err) {
-    if (err) {
-      if (err.message === 'INVALID_FILE_FORMAT' || err.code === 'LIMIT_FILE_TYPES') {
-        return sendError(res, 415, 'INVALID_FILE_FORMAT', '허용되지 않는 파일 형식입니다. (pdf, jpg, png만 가능)');
+  upload.single('documentFile')(req, res, async err => {
+    try {
+      if (err) {
+        if (err.message === 'INVALID_FILE_FORMAT') {
+          return sendError(res, 415, 'INVALID_FILE_FORMAT', 'Only pdf, jpg, jpeg, and png files are allowed.');
+        }
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return sendError(res, 413, 'FILE_SIZE_LIMIT_EXCEEDED', 'Attachment size must be 10MB or less.');
+        }
+        return sendError(res, 400, 'UPLOAD_ERROR', err.message);
       }
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return sendError(res, 413, 'FILE_SIZE_LIMIT_EXCEEDED', '첨부파일 크기 한도(10MB)를 초과하였습니다.');
+
+      const user = await repo.findUserById(req.user.id);
+      if (!user) {
+        return sendError(res, 404, 'USER_NOT_FOUND', 'User was not found.');
       }
-      return sendError(res, 400, 'UPLOAD_ERROR', err.message);
+
+      const { franchiseName, businessNumber, bankCode, bankName, deliveryAgencyName, accountNo, representativeName } = req.body;
+      const resolvedFranchiseName = franchiseName || user.franchiseName;
+      const rawBusinessNumber = String(businessNumber || user.businessNumber || '').replace(/[^0-9]/g, '');
+      const resolvedBusinessNumber = rawBusinessNumber.length === 10
+        ? `${rawBusinessNumber.slice(0, 3)}-${rawBusinessNumber.slice(3, 5)}-${rawBusinessNumber.slice(5)}`
+        : (businessNumber || user.businessNumber || '');
+      const resolvedRepresentativeName = representativeName || user.name;
+
+      if (!resolvedBusinessNumber || !/^\d{3}-\d{2}-\d{5}$/.test(resolvedBusinessNumber)) {
+        return sendError(res, 400, 'INVALID_BUSINESS_NUMBER', 'businessNumber must match XXX-XX-XXXXX.');
+      }
+      if (!resolvedFranchiseName || !bankCode || !bankName || !deliveryAgencyName || !accountNo || !resolvedRepresentativeName) {
+        return sendError(res, 400, 'MISSING_FIELDS', 'franchiseName, bankCode, bankName, deliveryAgencyName, accountNo, and representativeName are required.');
+      }
+      if (!/^[0-9-]{8,30}$/.test(String(accountNo))) {
+        return sendError(res, 400, 'INVALID_ACCOUNT_NO', 'accountNo must contain 8 to 30 digits or hyphens.');
+      }
+      if (!req.file) {
+        return sendError(res, 400, 'DOCUMENT_FILE_REQUIRED', 'A POS photo attachment is required.');
+      }
+
+      const uploadedFile = await persistUpload(req.file, req.user.id);
+      const request = await repo.createAccountRequest({
+        requestId: generateId('REQ', 4),
+        franchiseId: req.user.franchiseId,
+        franchiseName: resolvedFranchiseName,
+        businessNumber: resolvedBusinessNumber,
+        bankCode,
+        bankName,
+        deliveryAgencyName,
+        accountNo,
+        representativeName: resolvedRepresentativeName,
+        documentUrl: `/uploads/${encodeURIComponent(uploadedFile.fileKey)}`
+      });
+
+      return res.status(202).json({
+        success: true,
+        message: 'Virtual account request submitted.',
+        data: request
+      });
+    } catch (error) {
+      return handleError(error, res);
     }
-
-    const { franchiseName, businessNumber, bankCode, representativeName } = req.body;
-    logAction('FRANCHISE', '가상계좌 심사 신청', { franchiseName, businessNumber, bankCode });
-
-    // Validation
-    const bizNoRegex = /^\d{3}-\d{2}-\d{5}$/;
-    if (!businessNumber || !bizNoRegex.test(businessNumber)) {
-      return sendError(res, 400, 'INVALID_BUSINESS_NUMBER', '사업자등록번호 형식이 불일치합니다. (XXX-XX-XXXXX 형식 필요)');
-    }
-
-    if (!franchiseName || !bankCode || !representativeName) {
-      return sendError(res, 400, 'MISSING_FIELDS', '필수 입력 필드가 누락되었습니다.');
-    }
-
-    // Generate Request ID
-    const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const randNum = Math.floor(1000 + Math.random() * 9000);
-    const requestId = `REQ-${todayStr}-${randNum}`;
-
-    const newRequest = {
-      requestId,
-      franchiseId: req.user.franchiseId || 1052,
-      franchiseName,
-      businessNumber,
-      bankCode,
-      representativeName,
-      status: 'PENDING',
-      documentUrl: req.file ? `https://storage.eatspay.co.kr/documents/${req.file.originalname}` : 'https://storage.eatspay.co.kr/documents/biz_cert_mock.jpg',
-      submittedAt: getTimestamp(),
-      assignedVirtualAccount: null,
-      rejectionReason: null
-    };
-
-    db.accountRequests.push(newRequest);
-
-    return res.status(202).json({
-      success: true,
-      message: '가상계좌 발급 심사 요청이 접수되었습니다.',
-      data: newRequest
-    });
   });
 });
 
-/**
- * 2.3 대행비 카드 결제 요청 (POST /api/payment/charge)
- */
-app.post('/api/payment/charge', authenticate, verifySignature, (req, res) => {
-  const { amount, calculatedFee, totalAmount, cardId, paymentGateway } = req.body;
-  logAction('PAYMENT', '대행비 카드 결제 요청', { amount, calculatedFee, totalAmount });
+app.get('/api/installments/current', asyncHandler(async (req, res) => {
+  const items = await repo.listInterestFreeInstallments({ onlyActive: true });
+  return res.status(200).json({ success: true, data: items });
+}));
 
-  if (!amount || !calculatedFee || !totalAmount || !cardId) {
-    return sendError(res, 400, 'MISSING_FIELDS', '요청 필드가 누락되었습니다.');
-  }
+app.get('/api/franchise/accounts', authenticate, asyncHandler(async (req, res) => {
+  const [requests, deliveryAccounts] = await Promise.all([
+    repo.listAccountRequestsByFranchise(req.user.franchiseId),
+    repo.listDeliveryAccountsByFranchise(req.user.franchiseId)
+  ]);
 
-  // Precise financial check: 4.602% fee validation (Math.floor(amount * 0.04602))
-  const expectedFee = Math.floor(amount * 0.04602);
-  if (calculatedFee !== expectedFee) {
-    return sendError(res, 400, 'FEE_MISMATCH', `수수료 연산 결과 검증 실패. 기대값: ${expectedFee}, 요청값: ${calculatedFee}`);
-  }
-
-  if (totalAmount !== amount + expectedFee) {
-    return sendError(res, 400, 'FEE_MISMATCH', `총액 오류. 기대값: ${amount + expectedFee}, 요청값: ${totalAmount}`);
-  }
-
-  // Mock Card Limit Check
-  if (amount > 10000000) {
-    return sendError(res, 402, 'CARD_LIMIT_EXCEEDED', '카드 한도 초과 혹은 카드 승인 거절 오류가 발생했습니다.');
-  }
-
-  // Success payment updates balance
-  const user = db.users.find(u => u.id === req.user.id);
-  user.balance += amount;
-
-  const transactionId = `TXN-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(1000000 + Math.random() * 9000000)}`;
-  const newTxn = {
-    transactionId,
-    franchiseId: user.franchiseId || 1052,
-    type: 'CHARGE',
-    amount,
-    fee: calculatedFee,
-    totalAmount,
-    method: 'CARD',
-    cardDetails: '국민카드 (****-****-1234)',
-    status: 'SUCCESS',
-    createdAt: getTimestamp()
+  const statusLabel = status => {
+    if (status === 'APPROVED') return '\uC2B9\uC778\uC644\uB8CC';
+    if (status === 'REJECTED') return '\uBC18\uB824';
+    return '\uC2B9\uC778\uB300\uAE30';
   };
 
-  db.transactions.push(newTxn);
+  const requestItems = requests.map(request => ({
+    id: request.requestId,
+    source: 'account_request',
+    franchiseId: request.franchiseId,
+    franchiseName: request.franchiseName,
+    agencyName: request.deliveryAgencyName || '',
+    bankName: request.bankName || '',
+    accountNo: request.accountNo || request.assignedVirtualAccount?.accountNumber || '',
+    accountHolder: request.representativeName,
+    fileName: request.documentUrl ? path.basename(request.documentUrl) : '',
+    status: request.status,
+    statusLabel: statusLabel(request.status),
+    requestedAt: request.submittedAt,
+    rejectionReason: request.rejectionReason || ''
+  }));
+
+  const deliveryItems = deliveryAccounts.map(account => ({
+    id: account.id,
+    source: 'delivery_account',
+    franchiseId: account.franchiseId,
+    agencyName: account.agencyName,
+    bankName: account.bankName,
+    accountNo: account.accountNo,
+    accountHolder: account.accountHolder,
+    fileName: account.fileKey || '',
+    status: account.accountStatus,
+    statusLabel: statusLabel(account.accountStatus),
+    requestedAt: account.reqDate,
+    rejectionReason: account.rejectionReason || ''
+  }));
+
+  return res.status(200).json({
+    success: true,
+    data: [...requestItems, ...deliveryItems].sort((a, b) => new Date(b.requestedAt || 0) - new Date(a.requestedAt || 0))
+  });
+}));
+
+app.delete('/api/franchise/accounts/:id', authenticate, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const source = String(req.query.source || '').trim();
+  let deleted = null;
+
+  if (source === 'delivery_account' || (/^\d+$/.test(id) && source !== 'account_request')) {
+    deleted = await repo.deleteDeliveryAccountByFranchise(Number(id), req.user.franchiseId);
+  } else {
+    deleted = await repo.deleteAccountRequestByFranchise(id, req.user.franchiseId);
+  }
+
+  if (!deleted) {
+    return sendError(res, 404, 'ACCOUNT_NOT_FOUND', 'Virtual account was not found.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Virtual account deleted.',
+    data: {
+      id,
+      source: source || (typeof deleted.id === 'number' ? 'delivery_account' : 'account_request')
+    }
+  });
+}));
+
+app.all('/api/ghpayments/echo', authenticateAdmin, asyncHandler(async (req, res) => {
+  const proxyResponse = await ghPaymentsRequest('/api/echo', {
+    method: req.method,
+    body: req.method === 'GET' ? undefined : req.body
+  });
+  return relayProviderResponse(proxyResponse, res);
+}));
+
+app.post('/api/ghpayments/billing/reg', authenticateAdmin, asyncHandler(async (req, res) => {
+  const proxyResponse = await ghPaymentsRequest('/api/billing/reg', {
+    method: 'POST',
+    body: req.body
+  });
+  return relayProviderResponse(proxyResponse, res);
+}));
+
+app.get('/api/ghpayments/billing/delete/:rebillId', authenticateAdmin, asyncHandler(async (req, res) => {
+  const proxyResponse = await ghPaymentsRequest(`/api/billing/delete/${encodeURIComponent(req.params.rebillId)}`, {
+    method: 'GET'
+  });
+  return relayProviderResponse(proxyResponse, res);
+}));
+
+app.post('/api/ghpayments/billing/pay', authenticateAdmin, asyncHandler(async (req, res) => {
+  const proxyResponse = await ghPaymentsRequest('/api/billing/pay', {
+    method: 'POST',
+    body: req.body
+  });
+  return relayProviderResponse(proxyResponse, res);
+}));
+
+app.post('/api/ghpayments/refund', authenticateAdmin, asyncHandler(async (req, res) => {
+  const proxyResponse = await ghPaymentsRequest('/api/refund', {
+    method: 'POST',
+    body: req.body
+  });
+  return relayProviderResponse(proxyResponse, res);
+}));
+
+app.all('/api/ghpayments/get', authenticateAdmin, asyncHandler(async (req, res) => {
+  const proxyResponse = await ghPaymentsRequest('/api/get', {
+    method: req.method,
+    body: req.method === 'GET' ? undefined : req.body
+  });
+  return relayProviderResponse(proxyResponse, res);
+}));
+
+app.post('/api/payment/charge', authenticate, asyncHandler(async (req, res) => {
+  const { amount, calculatedFee, totalAmount, cardId, installment = 0 } = req.body;
+  if (!amount || !calculatedFee || !totalAmount || !cardId) {
+    return sendError(res, 400, 'MISSING_FIELDS', 'amount, calculatedFee, totalAmount, and cardId are required.');
+  }
+
+  const expectedFee = Math.floor(Number(amount) * 0.04602);
+  if (Number(calculatedFee) !== expectedFee || Number(totalAmount) !== Number(amount) + expectedFee) {
+    return sendError(res, 400, 'FEE_MISMATCH', 'Fee calculation mismatch.');
+  }
+
+  if (Number(amount) > 10000000) {
+    return sendError(res, 402, 'CARD_LIMIT_EXCEEDED', 'Card limit exceeded.');
+  }
+
+  const useProvider = Boolean(process.env.GH_PAYMENTS_PAY_KEY) && String(cardId).startsWith('rb_');
+  if (useProvider) {
+    const transactionId = generateId('TXN', 7);
+    const providerResponse = await ghPaymentsRequest('/api/billing/pay', {
+      method: 'POST',
+      body: {
+        billing: {
+          rebillId: cardId,
+          trackId: transactionId,
+          amount: Number(totalAmount),
+          installment: Number(installment) || 0
+        }
+      }
+    });
+
+    const payload = await providerResponse.json().catch(() => ({}));
+    if (!providerResponse.ok || payload?.result?.resultCd !== '0000') {
+      const providerMessage = payload?.result?.advanceMsg || payload?.result?.resultMsg || payload?.message || 'Payment failed at payment provider.';
+      return sendError(res, providerResponse.status || 502, 'GH_PAYMENTS_BILLING_PAY_FAILED', providerMessage, payload);
+    }
+
+    const providerCard = payload.pay?.card || {};
+    const cardDetails = `${providerCard.issuer || providerCard.cardType || 'CARD'} (****-****-${providerCard.last4 || String(cardId).slice(-4)})`;
+    const result = await repo.recordCharge({
+      userId: req.user.id,
+      franchiseId: req.user.franchiseId,
+      transactionId,
+      amount: Number(amount),
+      fee: expectedFee,
+      totalAmount: Number(totalAmount),
+      method: 'CARD',
+      cardDetails
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        transactionId,
+        status: 'PAID',
+        amount: Number(amount),
+        fee: expectedFee,
+        totalAmount: Number(totalAmount),
+        approvedAt: new Date().toISOString(),
+        updatedBalance: result.updatedBalance,
+        provider: 'GH_PAYMENTS',
+        providerResult: payload
+      }
+    });
+  }
+
+  const transactionId = generateId('TXN', 7);
+  const result = await repo.recordCharge({
+    userId: req.user.id,
+    franchiseId: req.user.franchiseId,
+    transactionId,
+    amount: Number(amount),
+    fee: expectedFee,
+    totalAmount: Number(totalAmount),
+    method: 'CARD',
+    cardDetails: `card:${cardId}`
+  });
 
   return res.status(200).json({
     success: true,
     data: {
       transactionId,
       status: 'PAID',
-      amount,
-      fee: calculatedFee,
-      totalAmount,
-      approvedAt: getTimestamp(),
-      updatedBalance: user.balance
+      amount: Number(amount),
+      fee: expectedFee,
+      totalAmount: Number(totalAmount),
+      approvedAt: new Date().toISOString(),
+      updatedBalance: result.updatedBalance
     }
   });
-});
+}));
 
-/**
- * 2.4 가맹점별 기간 필터 결제 내역 조회 (GET /api/payment/history)
- */
-app.get('/api/payment/history', authenticate, (req, res) => {
+app.get('/api/payment/history', authenticate, asyncHandler(async (req, res) => {
   const { startDate, endDate, type = 'ALL', page = 1, limit = 10 } = req.query;
-  logAction('PAYMENT', '내역 조회 요청', { startDate, endDate, type, page, limit });
-
   if (!startDate || !endDate) {
-    return sendError(res, 400, 'MISSING_DATE_FILTER', 'startDate와 endDate는 필수 검색 필터 조건입니다.');
+    return sendError(res, 400, 'MISSING_DATE_FILTER', 'startDate and endDate are required.');
   }
 
-  const pNum = parseInt(page, 10);
-  const lNum = parseInt(limit, 10);
-
-  // Filter transactions
-  const filtered = db.transactions.filter(t => {
-    // Filter by franchise
-    if (req.user.role === 'OWNER' && t.franchiseId !== req.user.franchiseId) return false;
-
-    // Filter by date
-    const txnDate = t.createdAt.slice(0, 10);
-    if (txnDate < startDate || txnDate > endDate) return false;
-
-    // Filter by type
-    if (type !== 'ALL' && t.type !== type) return false;
-
-    return true;
+  const pNum = Math.max(parseInt(page, 10) || 1, 1);
+  const lNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+  const { items, totalItems } = await repo.listTransactions({
+    startDate,
+    endDate,
+    type,
+    limit: lNum,
+    offset: (pNum - 1) * lNum,
+    role: req.user.franchiseId ? 'OWNER' : req.user.role,
+    franchiseId: req.user.franchiseId
   });
-
-  // Pagination
-  const startIndex = (pNum - 1) * lNum;
-  const endIndex = pNum * lNum;
-  const paginatedItems = filtered.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(filtered.length / lNum) || 1;
+  const historyItems = items.map(item => ({
+    ...item,
+    paymentDate: formatKstDateTime(item.createdAt)
+  }));
 
   return res.status(200).json({
     success: true,
     data: {
-      items: paginatedItems,
+      items: historyItems,
       pagination: {
         currentPage: pNum,
-        totalPages,
-        totalItems: filtered.length,
+        totalPages: Math.ceil(totalItems / lNum) || 1,
+        totalItems,
         limit: lNum
       }
     }
   });
-});
+}));
 
-/**
- * 2.3 B. 카드 등록 (POST /api/card/register)
- */
-app.post('/api/card/register', authenticate, (req, res) => {
-  const { cardNumber, cardPw, expiryMonth, expiryYear, identity, alias } = req.body;
-  logAction('PAYMENT', '카드 등록 요청', { cardNumber: cardNumber ? cardNumber.slice(0, 4) + '-****' : 'none', alias });
+app.get('/api/card/list', authenticate, asyncHandler(async (req, res) => {
+  const cards = await repo.listCardsByUserId(req.user.id);
+  return res.status(200).json({
+    success: true,
+    data: cards
+  });
+}));
 
-  if (!cardNumber || !cardPw || !expiryMonth || !expiryYear || !identity) {
-    return sendError(res, 400, 'BAD_REQUEST', '카드번호, 비밀번호앞2자리, 만료월, 만료년, 식별정보(생년월일/법인번호)는 필수입니다.');
+app.put('/api/card/:id', authenticate, asyncHandler(async (req, res) => {
+  const cardCompany = String(req.body.cardCompany || '').trim();
+  const alias = String(req.body.alias || '').trim();
+  const digits = String(req.body.cardNumber || '').replace(/\D/g, '');
+  if (!cardCompany) {
+    return sendError(res, 400, 'MISSING_CARD_COMPANY', 'cardCompany is required.');
+  }
+  if (!alias) {
+    return sendError(res, 400, 'MISSING_ALIAS', 'alias is required.');
+  }
+  if (digits && digits.length !== 16) {
+    return sendError(res, 400, 'INVALID_CARD_NUMBER', 'cardNumber must contain 16 digits.');
   }
 
-  // Find user and save card information
-  const user = db.users.find(u => u.id === req.user.id);
-  if (!user) {
-    return sendError(res, 404, 'USER_NOT_FOUND', '사용자 정보를 찾을 수 없습니다.');
+  const updated = await repo.updateCardByUserId(req.params.id, req.user.id, {
+    maskedNumber: digits ? `****-****-****-${digits.slice(-4)}` : null,
+    cardName: cardCompany,
+    cardCompany,
+    alias
+  });
+  if (!updated) {
+    return sendError(res, 404, 'CARD_NOT_FOUND', 'Card was not found.');
   }
-
-  if (!user.cards) {
-    user.cards = [];
-  }
-
-  const cardName = cardNumber.startsWith('9') ? '비씨카드' : cardNumber.startsWith('8') ? '현대카드' : '삼성카드';
-  const last4 = cardNumber.slice(-4);
-  const maskedCard = `${cardName} (****-****-${last4})`;
-
-  const newCard = {
-    id: `card_ref_${Math.floor(10000 + Math.random() * 90000)}`,
-    maskedNumber: maskedCard,
-    cardName,
-    alias: alias || (user.cards.length === 0 ? '운영카드' : `서브카드${user.cards.length}`),
-    createdAt: getTimestamp()
-  };
-
-  user.cards.push(newCard);
 
   return res.status(200).json({
     success: true,
-    message: '카드가 성공적으로 등록되었습니다.',
-    data: newCard
+    message: 'Card updated.',
+    data: updated
   });
-});
+}));
 
+app.delete('/api/card/:id', authenticate, asyncHandler(async (req, res) => {
+  const deleted = await repo.deleteCardByUserId(req.params.id, req.user.id);
+  if (!deleted) {
+    return sendError(res, 404, 'CARD_NOT_FOUND', 'Card was not found.');
+  }
 
-/**
- * 2.5 본사 관리자용 계좌 심사 승인/반려 처리 (POST /api/admin/accounts/approve)
- */
-app.post('/api/admin/accounts/approve', authenticateAdmin, (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Card deleted.',
+    data: {
+      id: deleted.id
+    }
+  });
+}));
+
+app.post('/api/card/register', authenticate, asyncHandler(async (req, res) => {
+  const { cardNumber, cardPw, expiryMonth, expiryYear, identity, alias, cardCompany } = req.body;
+  if (!cardNumber || !cardPw || !expiryMonth || !expiryYear || !identity) {
+    return sendError(res, 400, 'BAD_REQUEST', 'Card details are required.');
+  }
+
+  const digits = String(cardNumber).replace(/[^0-9]/g, '');
+  if (digits.length < 12 || digits.length > 19) {
+    return sendError(res, 400, 'INVALID_CARD_NUMBER', 'Card number format is invalid.');
+  }
+
+  const count = await repo.countCardsByUserId(req.user.id);
+  const resolvedAlias = alias || (count === 0 ? 'Primary card' : `Card ${count + 1}`);
+  const resolvedCompany = String(cardCompany || '').trim();
+  if (!resolvedCompany) {
+    return sendError(res, 400, 'MISSING_CARD_COMPANY', 'Card company is required.');
+  }
+
+  if (process.env.GH_PAYMENTS_PAY_KEY) {
+    const response = await ghPaymentsRequest('/api/billing/reg', {
+      method: 'POST',
+      body: {
+        rebill: {
+          trackId: generateId('CARD', 6),
+          cardNumber: digits,
+          cardExpireDate: formatCardExpireDate(expiryMonth, expiryYear),
+          cardPassword: String(cardPw).replace(/[^0-9]/g, '').slice(0, 2),
+          socialNumber: String(identity).replace(/[^0-9]/g, ''),
+          productName: 'eats PAY 移대뱶 ?깅줉',
+          payerName: req.user.name || '',
+          payerEmail: req.user.email || '',
+          payerTel: req.user.phone || ''
+        }
+      }
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload?.result?.resultCd !== '0000') {
+      const providerMessage = payload?.result?.advanceMsg || payload?.result?.resultMsg || payload?.message || 'Card registration failed at payment provider.';
+      return sendError(res, response.status || 502, 'GH_PAYMENTS_CARD_REGISTRATION_FAILED', providerMessage, payload);
+    }
+
+    const rebill = payload.rebill || {};
+    const providerCardId = rebill.rebillId || `card_ref_${crypto.randomUUID()}`;
+    const cardName = rebill.issueCompanyName || rebill.buyCompanyName || resolvedCompany || inferCardName(digits);
+    const maskedNumber = rebill.cardNumber || `${cardName} (****-****-${digits.slice(-4)})`;
+    const card = await repo.registerCard(req.user.id, {
+      id: providerCardId,
+      maskedNumber,
+      cardName,
+      cardCompany: resolvedCompany,
+      alias: resolvedAlias
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Card registered through GH Payments.',
+      data: {
+        ...card,
+        provider: 'GH_PAYMENTS',
+        rebillId: providerCardId,
+        providerResult: payload.result || null
+      }
+    });
+  }
+
+  const cardName = resolvedCompany || inferCardName(digits);
+  const last4 = digits.slice(-4);
+  const card = await repo.registerCard(req.user.id, {
+    id: `card_ref_${crypto.randomUUID()}`,
+    maskedNumber: `****-****-****-${last4}`,
+    cardName,
+    cardCompany: resolvedCompany,
+    alias: resolvedAlias
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: 'Card registered.',
+    data: card
+  });
+}));
+
+app.post('/api/admin/accounts/approve', authenticateAdmin, asyncHandler(async (req, res) => {
   const { requestId, action, assignedVirtualAccount, rejectionReason } = req.body;
-  logAction('ADMIN', '가상계좌 승인/반려 처리', { requestId, action });
-
-  const request = db.accountRequests.find(r => r.requestId === requestId);
+  const request = await repo.findAccountRequest(requestId);
   if (!request) {
-    return sendError(res, 404, 'REQUEST_NOT_FOUND', '존재하지 않는 가상계좌 심사 신청건입니다.');
+    return sendError(res, 404, 'REQUEST_NOT_FOUND', 'Account request was not found.');
   }
-
   if (request.status !== 'PENDING') {
-    return sendError(res, 409, 'ALREADY_PROCESSED', '이미 심사가 최종 완료된 건으로 재처리가 불가합니다.');
+    return sendError(res, 409, 'ALREADY_PROCESSED', 'Account request is already processed.');
   }
 
+  let updated;
   if (action === 'APPROVED') {
     if (!assignedVirtualAccount || !assignedVirtualAccount.accountNumber) {
-      return sendError(res, 400, 'MISSING_ACCOUNT_INFO', '승인 시 발급할 가상계좌 정보가 필수입니다.');
+      return sendError(res, 400, 'MISSING_ACCOUNT_INFO', 'assignedVirtualAccount.accountNumber is required.');
     }
-    request.status = 'APPROVED';
-    request.assignedVirtualAccount = assignedVirtualAccount;
+    updated = await repo.updateAccountRequest(requestId, { status: 'APPROVED', assignedVirtualAccount });
   } else if (action === 'REJECTED') {
     if (!rejectionReason) {
-      return sendError(res, 400, 'MISSING_REJECTION_REASON', '반려 처리 시에는 반려 사유 기입이 필수입니다.');
+      return sendError(res, 400, 'MISSING_REJECTION_REASON', 'rejectionReason is required.');
     }
-    request.status = 'REJECTED';
-    request.rejectionReason = rejectionReason;
+    updated = await repo.updateAccountRequest(requestId, { status: 'REJECTED', rejectionReason });
   } else {
-    return sendError(res, 400, 'INVALID_ACTION', 'Action 필드는 APPROVED 또는 REJECTED여야 합니다.');
+    return sendError(res, 400, 'INVALID_ACTION', 'action must be APPROVED or REJECTED.');
+  }
+
+  const owner = await repo.findUserByFranchiseId(request.franchiseId);
+  if (owner) {
+    const approved = action === 'APPROVED';
+    await repo.createNotification({
+      userId: owner.id,
+      type: approved ? 'ACCOUNT_APPROVED' : 'ACCOUNT_REJECTED',
+      title: approved ? '가상계좌가 승인되었습니다.' : '가상계좌가 반려되었습니다.',
+      body: approved
+        ? `${request.deliveryAgencyName || '배달대행사'} 가상계좌가 승인되었습니다.`
+        : `${request.deliveryAgencyName || '배달대행사'} 가상계좌가 반려되었습니다.${rejectionReason ? `\n사유: ${rejectionReason}` : ''}`,
+      data: {
+        requestId,
+        action,
+        deliveryAgencyName: request.deliveryAgencyName,
+        accountNo: request.accountNo,
+        assignedVirtualAccount: action === 'APPROVED' ? assignedVirtualAccount : null
+      }
+    });
   }
 
   return res.status(200).json({
     success: true,
-    message: '계좌 발급 심사가 성공적으로 완료 및 계좌가 할당되었습니다.',
+    message: 'Account request processed.',
     data: {
-      requestId: request.requestId,
-      status: request.status,
+      requestId: updated.requestId,
+      status: updated.status,
       approvedBy: req.user.name,
-      processedAt: getTimestamp()
+      processedAt: new Date().toISOString()
     }
   });
-});
+}));
 
-/**
- * 2.6 본사 관리자용 결제 및 정산 롤백 처리 (POST /api/admin/settlement/rollback)
- */
-app.post('/api/admin/settlement/rollback', authenticateAdmin, verifySignature, (req, res) => {
-  const { targetTransactionId, reason, doubleAuthToken } = req.body;
-  logAction('ADMIN', '결제 롤백 요청', { targetTransactionId, reason });
-
-  if (doubleAuthToken !== 'ADMIN_2FA_TOKEN_VERIFIED') {
-    return sendError(res, 401, 'MFA_REQUIRED', '2차 보안용 인증 토큰(MFA) 검증에 실패했습니다.');
-  }
-
-  const transaction = db.transactions.find(t => t.transactionId === targetTransactionId);
-  if (!transaction) {
-    return sendError(res, 404, 'TRANSACTION_NOT_FOUND', '롤백 처리할 원 거래 내역을 찾을 수 없습니다.');
-  }
-
-  if (transaction.status === 'ROLLED_BACK') {
-    return sendError(res, 409, 'TRANSACTION_ALREADY_ROLLED_BACK', '이미 환불 및 롤백이 완료된 정산 트랜잭션입니다.');
-  }
-
-  const user = db.users.find(u => u.franchiseId === transaction.franchiseId);
+app.post('/api/franchise/:id/reset-password', authenticateAdmin, asyncHandler(async (req, res) => {
+  const franchiseId = Number(req.params.id);
+  const temporaryPassword = createTemporaryPassword();
+  const user = await repo.updateUserPasswordByFranchiseId(franchiseId, await hashPassword(temporaryPassword));
   if (!user) {
-    return sendError(res, 404, 'FRANCHISE_NOT_FOUND', '연계된 가맹점주 정보를 찾을 수 없습니다.');
+    return sendError(res, 404, 'FRANCHISE_NOT_FOUND', 'Franchise was not found.');
   }
-
-  // Financial constraint check: Current balance must be enough to deduct refundAmount
-  if (user.balance < transaction.amount) {
-    return sendError(
-      res,
-      400,
-      'INSUFFICIENT_BALANCE',
-      `보유 잔액 부족으로 롤백이 불가능합니다. 롤백요청액: ${transaction.amount}원, 현재잔액: ${user.balance}원`
-    );
-  }
-
-  // Process balance deduction & state update
-  user.balance -= transaction.amount;
-  transaction.status = 'ROLLED_BACK';
-
-  const rollbackId = `ROL-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(10000 + Math.random() * 90000)}`;
 
   return res.status(200).json({
     success: true,
-    message: '결제 거래 및 가맹점 정산 잔액이 정상적으로 롤백 완료되었습니다.',
     data: {
-      rollbackTransactionId: rollbackId,
+      franchiseId,
+      temporaryPassword,
+      resetAt: new Date().toISOString()
+    }
+  });
+}));
+
+app.post('/api/agency/:id/reset-password', authenticateAdmin, asyncHandler(async (req, res) => {
+  const agencyId = Number(req.params.id);
+  const temporaryPassword = createTemporaryPassword();
+  const agency = await repo.updateAgencyPasswordById(agencyId, await hashPassword(temporaryPassword));
+  if (!agency) {
+    return sendError(res, 404, 'AGENCY_NOT_FOUND', 'Agency was not found.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      agencyId,
+      temporaryPassword,
+      resetAt: new Date().toISOString()
+    }
+  });
+}));
+
+app.get('/api/files/:fileName', authenticateAdmin, asyncHandler(async (req, res) => {
+  const fileKey = safeFileKey(req.params.fileName);
+  const file = await repo.findFileByKey(fileKey);
+  if (!file) {
+    return sendError(res, 404, 'FILE_NOT_FOUND', 'File was not found.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      fileName: file.fileKey,
+      originalName: file.originalName,
+      mimeType: file.mimeType,
+      url: file.publicUrl || `/uploads/${encodeURIComponent(file.fileKey)}`
+    }
+  });
+}));
+
+app.post('/api/franchise/:id/biz-doc', authenticateAdmin, singleUpload('file'), asyncHandler(async (req, res) => {
+  const franchiseId = Number(req.params.id);
+  if (!req.file) {
+    return sendError(res, 400, 'MISSING_FILE', 'file is required.');
+  }
+
+  const file = await persistUpload(req.file, req.user.id);
+  const user = await repo.updateFranchiseBizDoc(franchiseId, file.fileKey);
+  if (!user) {
+    return sendError(res, 404, 'FRANCHISE_NOT_FOUND', 'Franchise was not found.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      franchiseId,
+      bizDocFile: file.fileKey,
+      url: `/uploads/${encodeURIComponent(file.fileKey)}`
+    }
+  });
+}));
+
+app.post('/api/franchise/:id/delivery-accounts', authenticateAdmin, singleUpload('file'), asyncHandler(async (req, res) => {
+  const franchiseId = Number(req.params.id);
+  const { agencyId, agencyName, bankName, accountHolder, accountNo } = req.body;
+  if (!agencyName || !bankName || !accountHolder || !accountNo) {
+    return sendError(res, 400, 'MISSING_FIELDS', 'agencyName, bankName, accountHolder, and accountNo are required.');
+  }
+
+  const file = req.file ? await persistUpload(req.file, req.user.id) : null;
+  const account = await repo.addDeliveryAccount({
+    franchiseId,
+    agencyId: agencyId ? Number(agencyId) : null,
+    agencyName,
+    bankName,
+    accountHolder,
+    accountNo,
+    fileKey: file?.fileKey || null
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: 'Delivery agency account submitted for review.',
+    data: account
+  });
+}));
+
+app.post('/api/agency/:id/settle-account', authenticateAdmin, singleUpload('file'), asyncHandler(async (req, res) => {
+  const agencyId = Number(req.params.id);
+  const { bankName, accountNo, accountHolder } = req.body;
+  if (!bankName || !accountNo || !accountHolder) {
+    return sendError(res, 400, 'MISSING_FIELDS', 'bankName, accountNo, and accountHolder are required.');
+  }
+
+  const file = req.file ? await persistUpload(req.file, req.user.id) : null;
+  const agency = await repo.updateAgencySettleAccount(agencyId, {
+    bankName,
+    accountNo,
+    accountHolder,
+    fileKey: file?.fileKey || null
+  });
+  if (!agency) {
+    return sendError(res, 404, 'AGENCY_NOT_FOUND', 'Agency was not found.');
+  }
+
+  return res.status(200).json({ success: true, data: agency });
+}));
+
+app.post('/api/agency/:id/contract', authenticateAdmin, singleUpload('file'), asyncHandler(async (req, res) => {
+  const agencyId = Number(req.params.id);
+  if (!req.file) {
+    return sendError(res, 400, 'MISSING_FILE', 'file is required.');
+  }
+
+  const file = await persistUpload(req.file, req.user.id);
+  const agency = await repo.updateAgencyContractFile(agencyId, file.fileKey);
+  if (!agency) {
+    return sendError(res, 404, 'AGENCY_NOT_FOUND', 'Agency was not found.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      agencyId,
+      contractFile: file.fileKey,
+      url: `/uploads/${encodeURIComponent(file.fileKey)}`
+    }
+  });
+}));
+
+app.get('/api/pg/settlements', authenticateAdmin, asyncHandler(async (req, res) => {
+  const { startDate, endDate, agencyId, status, page = 1, limit = 50 } = req.query;
+  const pNum = Math.max(parseInt(page, 10) || 1, 1);
+  const lNum = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+  const result = await repo.listPgSettlements({
+    startDate,
+    endDate,
+    agencyId: agencyId ? Number(agencyId) : null,
+    status,
+    limit: lNum,
+    offset: (pNum - 1) * lNum
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      items: result.items,
+      pagination: {
+        currentPage: pNum,
+        totalPages: Math.ceil(result.totalItems / lNum) || 1,
+        totalItems: result.totalItems,
+        limit: lNum
+      }
+    }
+  });
+}));
+
+app.post('/api/settle/export', authenticateAdmin, asyncHandler(async (req, res) => {
+  const { startDate, endDate, agencyId, status } = req.body || {};
+  const result = await repo.listPgSettlements({
+    startDate,
+    endDate,
+    agencyId: agencyId ? Number(agencyId) : null,
+    status,
+    limit: 5000,
+    offset: 0
+  });
+  const csv = toCsv(result.items);
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="settlements.csv"');
+  return res.status(200).send(`\uFEFF${csv}`);
+}));
+
+app.post('/api/admin/settlement/rollback', authenticateAdmin, verifySignature, asyncHandler(async (req, res) => {
+  const { targetTransactionId, reason, doubleAuthToken } = req.body;
+  if (!reason) {
+    return sendError(res, 400, 'MISSING_REASON', 'reason is required.');
+  }
+  if (!doubleAuthToken || doubleAuthToken !== process.env.ADMIN_ROLLBACK_TOKEN) {
+    return sendError(res, 401, 'MFA_REQUIRED', 'Valid admin rollback token is required.');
+  }
+
+  const transaction = await repo.findTransaction(targetTransactionId);
+  if (!transaction) {
+    return sendError(res, 404, 'TRANSACTION_NOT_FOUND', 'Transaction was not found.');
+  }
+  if (transaction.status === 'ROLLED_BACK') {
+    return sendError(res, 409, 'TRANSACTION_ALREADY_ROLLED_BACK', 'Transaction is already rolled back.');
+  }
+
+  const result = await repo.rollbackTransaction({
+    transactionId: transaction.transactionId,
+    franchiseId: transaction.franchiseId,
+    amount: transaction.amount
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: 'Rollback completed.',
+    data: {
+      rollbackTransactionId: generateId('ROL', 5),
       targetTransactionId: transaction.transactionId,
       refundAmount: transaction.amount,
       refundFee: transaction.fee,
       refundTotalAmount: transaction.totalAmount,
-      deductedFranchiseBalance: user.balance,
-      processedAt: getTimestamp()
+      deductedFranchiseBalance: result.deductedFranchiseBalance,
+      processedAt: new Date().toISOString()
     }
   });
-});
+}));
 
-/**
- * 2.7 본사 관리자용 가맹점 목록 전체 조회 (GET /api/admin/franchises)
- */
-app.get('/api/admin/franchises', authenticateAdmin, (req, res) => {
-  logAction('ADMIN', '가맹점 목록 조회 요청');
-
-  // Convert db.users with OWNER roles to franchise records for admin consumption
-  const list = db.users.filter(u => u.role === 'OWNER' || u.role === 'OWNER_PENDING').map(u => {
-    return {
-      id: u.franchiseId,
-      name: u.franchiseName || '미등록 상점',
-      owner: u.name,
-      phone: u.phone || '010-0000-0000',
-      bizNo: u.businessNumber || '000-00-00000',
-      joinDate: new Date().toISOString().slice(0, 10),
+app.get('/api/admin/franchises', authenticateAdmin, asyncHandler(async (req, res) => {
+  const users = await repo.listFranchiseUsers();
+  return res.status(200).json({
+    success: true,
+    data: users.map(user => ({
+      id: user.franchiseId,
+      name: user.franchiseName || 'Unregistered store',
+      agencyId: user.agencyId || null,
+      agency: displayAgencyName(user.agencyName),
+      owner: user.name,
+      phone: user.phone || '',
+      bizNo: user.businessNumber || '',
+      joinDate: formatDate(user.createdAt),
       lastPaymentDate: '',
-      status: u.role === 'OWNER' ? '정상 승인' : '승인 대기',
-      email: u.email,
-      role: u.role,
+      status: user.role === 'OWNER' ? '정상 승인' : user.role === 'OWNER_REJECTED' ? '승인 거절' : '승인 대기',
+      email: user.email,
+      role: user.role,
       deliveryAgencies: []
+    }))
+  });
+}));
+
+app.patch('/api/admin/franchises/:id/agency', authenticateAdmin, asyncHandler(async (req, res) => {
+  const franchiseId = Number(req.params.id);
+  const agencyId = Number(req.body?.agencyId);
+  if (!Number.isFinite(franchiseId) || !Number.isFinite(agencyId)) {
+    return sendError(res, 400, 'BAD_REQUEST', 'franchiseId and agencyId are required.');
+  }
+
+  const agencies = await repo.listAgencies();
+  const agency = agencies.find(item => Number(item.id) === agencyId);
+  if (!agency) {
+    return sendError(res, 404, 'AGENCY_NOT_FOUND', 'Agency was not found.');
+  }
+
+  const user = await repo.updateFranchiseAgency(franchiseId, agencyId);
+  if (!user) {
+    return sendError(res, 404, 'FRANCHISE_NOT_FOUND', 'Franchise was not found.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      franchiseId: user.franchiseId,
+      agencyId,
+      agencyName: displayAgencyName(agency.name)
+    }
+  });
+}));
+
+app.post('/api/admin/franchises/agency/bulk', authenticateAdmin, asyncHandler(async (req, res) => {
+  const franchiseIds = Array.isArray(req.body?.franchiseIds) ? req.body.franchiseIds : [];
+  const agencyId = Number(req.body?.agencyId);
+  if (!franchiseIds.length || !Number.isFinite(agencyId)) {
+    return sendError(res, 400, 'BAD_REQUEST', 'franchiseIds and agencyId are required.');
+  }
+
+  const agencies = await repo.listAgencies();
+  const agency = agencies.find(item => Number(item.id) === agencyId);
+  if (!agency) {
+    return sendError(res, 404, 'AGENCY_NOT_FOUND', 'Agency was not found.');
+  }
+
+  const users = await repo.updateFranchisesAgency(franchiseIds, agencyId);
+  return res.status(200).json({
+    success: true,
+    data: {
+      updatedCount: users.length,
+      agencyId,
+      agencyName: displayAgencyName(agency.name)
+    }
+  });
+}));
+
+app.put('/api/admin/franchises/:id', authenticateAdmin, asyncHandler(async (req, res) => {
+  const franchiseId = Number(req.params.id);
+  if (!Number.isFinite(franchiseId)) {
+    return sendError(res, 400, 'BAD_REQUEST', 'franchiseId is required.');
+  }
+
+  const franchiseName = String(req.body?.name || req.body?.franchiseName || '').trim();
+  const ownerName = String(req.body?.owner || req.body?.ownerName || '').trim();
+  const phone = String(req.body?.phone || '').trim();
+  const businessNumber = String(req.body?.bizNo || req.body?.businessNumber || '').replace(/[^0-9]/g, '');
+  const tel = String(req.body?.tel || '').trim();
+
+  if (!franchiseName) {
+    return sendError(res, 400, 'MISSING_FRANCHISE_NAME', 'franchiseName is required.');
+  }
+  if (!ownerName) {
+    return sendError(res, 400, 'MISSING_OWNER_NAME', 'ownerName is required.');
+  }
+  if (businessNumber && businessNumber.length !== 10) {
+    return sendError(res, 400, 'INVALID_BUSINESS_NUMBER', 'businessNumber must contain 10 digits.');
+  }
+
+  const updated = await repo.updateFranchiseDetails(franchiseId, {
+    franchiseName,
+    ownerName,
+    phone,
+    businessNumber,
+    tel
+  });
+  if (!updated) {
+    return sendError(res, 404, 'FRANCHISE_NOT_FOUND', '가맹점을 찾을 수 없습니다.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: '가맹점 정보가 수정되었습니다.',
+    data: {
+      id: updated.franchiseId,
+      name: updated.franchiseName,
+      owner: updated.name,
+      phone: updated.phone,
+      bizNo: updated.businessNumber,
+      tel: updated.tel
+    }
+  });
+}));
+
+app.delete('/api/admin/franchises/:id', authenticateAdmin, asyncHandler(async (req, res) => {
+  const franchiseId = Number(req.params.id);
+  if (!Number.isFinite(franchiseId)) {
+    return sendError(res, 400, 'BAD_REQUEST', 'franchiseId is required.');
+  }
+
+  const deleted = await repo.deleteFranchiseById(franchiseId);
+  if (!deleted) {
+    return sendError(res, 404, 'FRANCHISE_NOT_FOUND', '가맹점을 찾을 수 없습니다.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: '가맹점이 삭제되었습니다.',
+    data: {
+      franchiseId: deleted.franchiseId,
+      businessNumber: deleted.businessNumber
+    }
+  });
+}));
+
+app.get('/api/admin/bootstrap', authenticateAdmin, asyncHandler(async (req, res) => {
+  const [users, agencies, deliveryAgencies, deliveryAccounts, accountRequests, transactions, settlements, installments] = await Promise.all([
+    repo.listFranchiseUsers(),
+    repo.listAgencies(),
+    repo.listDeliveryAgencies(),
+    repo.listDeliveryAccounts(),
+    repo.listAccountRequests(),
+    repo.listTransactions({
+      startDate: '2000-01-01',
+      endDate: '2100-12-31',
+      role: 'ADMIN',
+      limit: 1000,
+      offset: 0
+    }),
+    repo.listPgSettlements({
+      startDate: '2000-01-01',
+      endDate: '2100-12-31',
+      limit: 1000,
+      offset: 0
+    }),
+    repo.listInterestFreeInstallments()
+  ]);
+
+  const franchiseMap = new Map();
+  users.forEach(user => {
+    franchiseMap.set(user.franchiseId, {
+      id: user.franchiseId,
+      name: user.franchiseName || 'Unregistered store',
+      agencyId: user.agencyId || null,
+      agency: displayAgencyName(user.agencyName),
+      owner: user.name,
+      phone: user.phone || '',
+      bizNo: user.businessNumber || '',
+      joinDate: formatDate(user.createdAt),
+      lastPaymentDate: '',
+      status: user.role === 'OWNER' ? '\uC815\uC0C1 \uC2B9\uC778' : user.role === 'OWNER_REJECTED' ? '\uC2B9\uC778 \uAC70\uC808' : '\uC2B9\uC778 \uB300\uAE30',
+      email: user.email,
+      role: user.role,
+      deliveryAgencies: []
+    });
+  });
+
+  const bankLabel = bankCode => {
+    const normalized = String(bankCode || '').replace(/[^0-9]/g, '');
+    const labels = {
+      '003': '\uAE30\uC5C5\uC740\uD589',
+      '004': '\uAD6D\uBBFC\uC740\uD589',
+      '011': '\uB18D\uD611\uC740\uD589',
+      '020': '\uC6B0\uB9AC\uC740\uD589',
+      '081': '\uD558\uB098\uC740\uD589',
+      '088': '\uC2E0\uD55C\uC740\uD589'
+    };
+    return labels[normalized] || bankCode || '\uAC00\uC0C1\uACC4\uC88C';
+  };
+
+  const pushDeliveryAgency = (franchiseId, entry) => {
+    const franchise = franchiseMap.get(franchiseId);
+    if (!franchise) return;
+    const exists = franchise.deliveryAgencies.some(item => (
+      item.requestId && item.requestId === entry.requestId
+    ) || (
+      item.agency === entry.agency &&
+      item.accountNo === entry.accountNo &&
+      item.reqDate === entry.reqDate
+    ));
+    if (!exists) franchise.deliveryAgencies.push(entry);
+  };
+
+  const ensureFranchiseForAccountRequest = request => {
+    if (franchiseMap.has(request.franchiseId)) return;
+    franchiseMap.set(request.franchiseId, {
+      id: request.franchiseId,
+      name: request.franchiseName || 'Unregistered store',
+      agencyId: null,
+      agency: DEFAULT_AGENCY_NAME,
+      owner: request.representativeName || request.franchiseName || '',
+      phone: '',
+      bizNo: request.businessNumber || '',
+      joinDate: formatDate(request.submittedAt),
+      lastPaymentDate: '',
+      status: request.status === 'APPROVED' ? '\uC815\uC0C1 \uC2B9\uC778' : request.status === 'REJECTED' ? '\uC2B9\uC778 \uAC70\uC808' : '\uC2B9\uC778 \uB300\uAE30',
+      email: '',
+      role: 'OWNER_PENDING',
+      deliveryAgencies: []
+    });
+  };
+
+  for (const request of accountRequests) {
+    ensureFranchiseForAccountRequest(request);
+    pushDeliveryAgency(request.franchiseId, {
+      agency: request.deliveryAgencyName || bankLabel(request.bankCode),
+      bankName: request.bankName || bankLabel(request.bankCode),
+      accountNo: request.accountNo || request.assignedVirtualAccount?.accountNumber || '',
+      fileName: request.documentUrl ? path.basename(request.documentUrl) : '',
+      documentUrl: request.documentUrl || '',
+      accountStatus: request.status === 'APPROVED' ? '\uC2B9\uC778\uC644\uB8CC' : request.status === 'REJECTED' ? '\uBC18\uB824' : '\uC2B9\uC778\uB300\uAE30',
+      reqDate: formatDate(request.submittedAt),
+      requestId: request.requestId,
+      source: 'account_request',
+      rejectReason: request.rejectionReason || ''
+    });
+  }
+
+  for (const account of deliveryAccounts) {
+    pushDeliveryAgency(account.franchiseId, {
+      id: account.id,
+      agency: account.bankName || account.agencyName || '\uAC00\uC0C1\uACC4\uC88C',
+      bankName: account.bankName || '',
+      accountNo: account.accountNo || '',
+      fileName: account.fileKey || '',
+      accountStatus: account.accountStatus === 'APPROVED' ? '\uC2B9\uC778\uC644\uB8CC' : account.accountStatus === 'REJECTED' ? '\uBC18\uB824' : '\uC2B9\uC778\uB300\uAE30',
+      reqDate: formatDate(account.reqDate),
+      requestId: null,
+      source: 'delivery_account',
+      rejectReason: account.rejectionReason || ''
+    });
+  }
+
+  const franchises = Array.from(franchiseMap.values()).sort((a, b) => b.joinDate.localeCompare(a.joinDate));
+  const transactionItems = Array.isArray(transactions?.items) ? transactions.items : [];
+  const settlementItems = Array.isArray(settlements?.items) ? settlements.items : [];
+  const franchiseById = new Map(franchises.map(franchise => [String(franchise.id), franchise]));
+  const defaultAgency = agencies.find(agency => (
+    agency.joinCode === 'EATSPAY-HQ' ||
+    displayAgencyName(agency.name) === DEFAULT_AGENCY_NAME ||
+    agency.name === DEFAULT_AGENCY_NAME
+  ));
+  const paymentRows = transactionItems.map(tx => {
+    const franchise = franchiseById.get(String(tx.franchiseId));
+    const agencyId = franchise?.agencyId || defaultAgency?.id || null;
+    const agencyName = franchise?.agency || (defaultAgency ? displayAgencyName(defaultAgency.name) : DEFAULT_AGENCY_NAME);
+    return {
+      id: tx.transactionId,
+      date: formatKstDateTime(tx.createdAt),
+      approvalNo: tx.transactionId,
+      agency: agencyName,
+      franchise: franchise?.name || `가맹점 ${tx.franchiseId}`,
+      franchiseId: tx.franchiseId,
+      type: tx.type === 'CHARGE' ? '\uCDA9\uC804' : tx.type,
+      amount: Number(tx.amount),
+      installment: '\uC77C\uC2DC\uBD88',
+      status: tx.status === 'SUCCESS' ? '\uACB0\uC81C\uC644\uB8CC' : tx.status,
+      pg: tx.method || 'PG',
+      agencyId
     };
   });
 
-  return res.status(200).json({
-    success: true,
-    data: list
-  });
-});
+  const paymentNameByFranchiseId = new Map(franchises.map(f => [f.id, f.name]));
+  const pgRows = settlementItems.map(item => ({
+    id: item.id,
+    date: formatKstDateTime(item.settledAt),
+    approvalNo: item.approvalNo,
+    pg: item.pg,
+    franchise: item.franchiseName || paymentNameByFranchiseId.get(item.franchiseId) || '',
+    paymentAmt: Number(item.paymentAmt),
+    svcFee: Number(item.svcFee),
+    netAmt: Number(item.netAmt),
+    deliveryAgency: item.deliveryAgency || '',
+    status: item.status === 'ROLLED_BACK' ? '\uB864\uBC31' : '\uC815\uC0B0\uC644\uB8CC',
+    note: '',
+    agencyId: item.agencyId || null,
+    pgTxId: item.pgTxId || ''
+  }));
 
-/**
- * 2.8 본사 관리자용 가맹점 가입 승인 처리 (POST /api/admin/franchise/approve)
- */
-app.post('/api/admin/franchise/approve', authenticateAdmin, (req, res) => {
-  const { email, action } = req.body;
-  logAction('ADMIN', '가맹점 승인/반려 처리', { email, action });
-
-  const user = db.users.find(u => u.email === email);
-  if (!user) {
-    return sendError(res, 404, 'USER_NOT_FOUND', '존재하지 않는 가맹점주 이메일입니다.');
-  }
-
-  if (action === 'APPROVED') {
-    user.role = 'OWNER';
-  } else if (action === 'REJECTED') {
-    user.role = 'OWNER_REJECTED';
-  } else {
-    return sendError(res, 400, 'INVALID_ACTION', 'Action 필드는 APPROVED 또는 REJECTED여야 합니다.');
-  }
+  const today = formatKstDate(new Date());
+  const todayPaymentTotal = paymentRows
+    .filter(payment => payment.date.startsWith(today))
+    .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
 
   return res.status(200).json({
     success: true,
-    message: '가맹점 승인 상태가 업데이트되었습니다.',
     data: {
-      email: user.email,
-      role: user.role
+      summary: {
+        pendingFranchises: users.filter(user => user.role === 'OWNER_PENDING').length,
+        pendingAccounts: accountRequests.filter(request => request.status === 'PENDING').length,
+      totalFranchises: users.length,
+      todayPaymentTotal
+    },
+    franchises,
+    agencies: agencies.map(agency => ({
+      ...agency,
+      name: displayAgencyName(agency.name)
+    })),
+    deliveryAgencies,
+    installments,
+    payments: paymentRows,
+    pgSettlements: pgRows,
+    accountRequests,
+      deliveryAccounts
     }
   });
-});
+}));
 
-/**
- * 2.9 본사 관리자용 가상계좌 심사 목록 조회 (GET /api/admin/accounts)
- */
-app.get('/api/admin/accounts', authenticateAdmin, (req, res) => {
-  logAction('ADMIN', '가상계좌 심사 목록 조회 요청');
+app.get('/api/admin/delivery-agencies', authenticateAdmin, asyncHandler(async (req, res) => {
+  const deliveryAgencies = await repo.listDeliveryAgencies();
+  return res.status(200).json({ success: true, data: deliveryAgencies });
+}));
+
+app.get('/api/admin/installments', authenticateAdmin, asyncHandler(async (req, res) => {
+  const installments = await repo.listInterestFreeInstallments();
+  return res.status(200).json({ success: true, data: installments });
+}));
+
+app.put('/api/admin/installments', authenticateAdmin, asyncHandler(async (req, res) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items : [];
+  if (!items.length) {
+    return sendError(res, 400, 'BAD_REQUEST', 'items are required.');
+  }
+
+  const saved = await repo.replaceInterestFreeInstallments(items);
+  return res.status(200).json({ success: true, data: saved });
+}));
+
+app.post('/api/admin/agencies', authenticateAdmin, asyncHandler(async (req, res) => {
+  const { name, loginId, level, region, owner, phone, feeRate, parentId } = req.body || {};
+  if (!String(name || '').trim()) {
+    return sendError(res, 400, 'BAD_REQUEST', 'name is required.');
+  }
+
+  const agency = await repo.createAgency({
+    type: Number(level) <= 2 ? 'HQ' : 'AGENCY',
+    parentId: parentId ? Number(parentId) : null,
+    name: String(name).trim(),
+    loginId: String(loginId || '').trim(),
+    address: String(region || '').trim(),
+    owner: String(owner || '').trim(),
+    phone: String(phone || '').trim(),
+    feeRate: Number(feeRate) || 0,
+    joinCode: `JOIN-${Date.now()}`
+  });
+
+  return res.status(201).json({
+    success: true,
+    data: {
+      ...agency,
+      name: displayAgencyName(agency.name)
+    }
+  });
+}));
+
+app.patch('/api/admin/agencies/:id', authenticateAdmin, asyncHandler(async (req, res) => {
+  const agencyId = Number(req.params.id);
+  const { name, loginId, level, region, owner, phone, feeRate, parentId } = req.body || {};
+  if (!Number.isFinite(agencyId)) {
+    return sendError(res, 400, 'BAD_REQUEST', 'agency id is required.');
+  }
+  if (!String(name || '').trim()) {
+    return sendError(res, 400, 'BAD_REQUEST', 'name is required.');
+  }
+
+  const agency = await repo.updateAgency(agencyId, {
+    type: Number(level) <= 2 ? 'HQ' : 'AGENCY',
+    parentId: parentId ? Number(parentId) : null,
+    name: String(name).trim(),
+    loginId: String(loginId || '').trim(),
+    address: String(region || '').trim(),
+    owner: String(owner || '').trim(),
+    phone: String(phone || '').trim(),
+    feeRate: Number(feeRate) || 0
+  });
+  if (!agency) {
+    return sendError(res, 404, 'AGENCY_NOT_FOUND', 'Agency was not found.');
+  }
+
   return res.status(200).json({
     success: true,
-    data: db.accountRequests
+    data: {
+      ...agency,
+      name: displayAgencyName(agency.name)
+    }
   });
+}));
+
+app.delete('/api/admin/agencies/:id', authenticateAdmin, asyncHandler(async (req, res) => {
+  const agencyId = Number(req.params.id);
+  if (!Number.isFinite(agencyId)) {
+    return sendError(res, 400, 'BAD_REQUEST', 'agency id is required.');
+  }
+
+  const assignedCount = await repo.countUsersByAgencyId(agencyId);
+  if (assignedCount > 0) {
+    return sendError(res, 409, 'AGENCY_IN_USE', 'Agency is assigned to franchises.', [{ assignedCount }]);
+  }
+
+  const agency = await repo.deleteAgency(agencyId);
+  if (!agency) {
+    return sendError(res, 404, 'AGENCY_NOT_FOUND', 'Agency was not found.');
+  }
+
+  return res.status(200).json({ success: true, data: agency });
+}));
+
+app.get('/api/delivery-agencies', asyncHandler(async (req, res) => {
+  const deliveryAgencies = await repo.listDeliveryAgencies();
+  return res.status(200).json({
+    success: true,
+    data: deliveryAgencies.filter(item => item.status === 'active' || item.status === 'inactive')
+  });
+}));
+
+app.post('/api/admin/delivery-agencies', authenticateAdmin, asyncHandler(async (req, res) => {
+  const { name, status = 'active', sortOrder = 0 } = req.body || {};
+  if (!name || !String(name).trim()) {
+    return sendError(res, 400, 'MISSING_NAME', 'name is required.');
+  }
+  const agency = await repo.createDeliveryAgency(String(name).trim(), status, Number(sortOrder) || 0);
+  return res.status(201).json({ success: true, data: agency });
+}));
+
+app.patch('/api/admin/delivery-agencies/:id/status', authenticateAdmin, asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const { status } = req.body || {};
+  if (!['active', 'inactive', 'deleted'].includes(status)) {
+    return sendError(res, 400, 'INVALID_STATUS', 'status must be active, inactive, or deleted.');
+  }
+  const agency = await repo.updateDeliveryAgencyStatus(id, status);
+  if (!agency) {
+    return sendError(res, 404, 'DELIVERY_AGENCY_NOT_FOUND', 'Delivery agency was not found.');
+  }
+  return res.status(200).json({ success: true, data: agency });
+}));
+
+app.delete('/api/admin/delivery-agencies/:id', authenticateAdmin, asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const agency = await repo.deleteDeliveryAgency(id);
+  if (!agency) {
+    return sendError(res, 404, 'DELIVERY_AGENCY_NOT_FOUND', 'Delivery agency was not found.');
+  }
+  return res.status(200).json({ success: true, data: { id } });
+}));
+
+app.post('/api/admin/franchise/approve', authenticateAdmin, asyncHandler(async (req, res) => {
+  const { email, action } = req.body;
+  const role = action === 'APPROVED' ? 'OWNER' : action === 'REJECTED' ? 'OWNER_REJECTED' : null;
+  if (!role) {
+    return sendError(res, 400, 'INVALID_ACTION', 'action must be APPROVED or REJECTED.');
+  }
+
+  const user = await repo.updateUserRoleByEmail(email, role);
+  if (!user) {
+    return sendError(res, 404, 'USER_NOT_FOUND', 'User was not found.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Franchise status updated.',
+    data: { email: user.email, role: user.role }
+  });
+}));
+
+app.get('/api/admin/accounts', authenticateAdmin, asyncHandler(async (req, res) => {
+  const requests = await repo.listAccountRequests();
+  return res.status(200).json({ success: true, data: requests });
+}));
+
+app.put('/api/admin/accounts/:id', authenticateAdmin, singleUpload('documentFile'), asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const source = String(req.query.source || req.body.source || 'account_request');
+  const accountNo = String(req.body.accountNo || '').trim();
+  const bankName = String(req.body.bankName || '').trim();
+  const deliveryAgencyName = String(req.body.deliveryAgencyName || req.body.agencyName || '').trim();
+  const accountHolder = String(req.body.accountHolder || req.body.representativeName || '').trim();
+  const uploadedFile = req.file ? await persistUpload(req.file, req.user.id) : null;
+
+  if (!accountNo || !/^[0-9-]{8,30}$/.test(accountNo)) {
+    return sendError(res, 400, 'INVALID_ACCOUNT_NO', 'accountNo must contain 8 to 30 digits or hyphens.');
+  }
+
+  let updated;
+  if (source === 'delivery_account') {
+    if (!/^\d+$/.test(id)) {
+      return sendError(res, 400, 'INVALID_ACCOUNT_ID', 'delivery account id must be numeric.');
+    }
+    updated = await repo.updateDeliveryAccount(Number(id), {
+      agencyName: deliveryAgencyName,
+      bankName,
+      accountHolder,
+      accountNo,
+      fileKey: uploadedFile?.fileKey || null
+    });
+  } else {
+    updated = await repo.updateAccountRequestDetails(id, {
+      bankName,
+      deliveryAgencyName,
+      representativeName: accountHolder,
+      accountNo,
+      documentUrl: uploadedFile ? `/uploads/${encodeURIComponent(uploadedFile.fileKey)}` : null
+    });
+  }
+
+  if (!updated) {
+    return sendError(res, 404, 'ACCOUNT_NOT_FOUND', 'Account was not found.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Account updated.',
+    data: updated
+  });
+}));
+
+app.delete('/api/admin/accounts/:id', authenticateAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const source = String(req.query.source || 'account_request');
+  let deleted;
+  if (source === 'delivery_account') {
+    if (!/^\d+$/.test(id)) {
+      deleted = await repo.deleteAccountRequest(id);
+    } else {
+      deleted = await repo.deleteDeliveryAccount(Number(id));
+      if (!deleted) {
+        deleted = await repo.deleteAccountRequest(id);
+      }
+    }
+  } else {
+    deleted = await repo.deleteAccountRequest(id);
+    if (!deleted && /^\d+$/.test(id)) {
+      deleted = await repo.deleteDeliveryAccount(Number(id));
+    }
+  }
+
+  if (!deleted) {
+    return sendError(res, 404, 'ACCOUNT_NOT_FOUND', '삭제할 출금계좌를 DB에서 찾지 못했습니다.');
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Account deleted.',
+    data: { id, source }
+  });
+}));
+
+app.use((err, req, res, next) => {
+  handleError(err, res);
 });
 
+if (require.main === module) {
+  dbBootstrapPromise
+    .then(() => {
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`[EatsPay Server] Running on http://localhost:${PORT}`);
+      });
+    })
+    .catch(err => {
+      console.error('[EatsPay Server] database bootstrap failed', err);
+      process.exit(1);
+    });
+}
 
-// Start Express Server
-app.listen(PORT, () => {
-  console.log(`[EatsPay Server] Running on http://localhost:${PORT}`);
-  console.log('========================================================================');
-  console.log('1. [POST] 일반 로그인: /api/auth/login');
-  console.log('2. [POST] 소셜 로그인: /api/auth/social');
-  console.log('3. [POST] 가상계좌 심사 신청: /api/franchise/accounts');
-  console.log('4. [POST] 대행비 카드결제: /api/payment/charge');
-  console.log('5. [GET] 결제 내역 기간 조회: /api/payment/history');
-  console.log('6. [POST] 계좌 심사 승인/반려: /api/admin/accounts/approve');
-  console.log('7. [POST] 결제 및 정산 롤백: /api/admin/settlement/rollback');
-  console.log('========================================================================');
-});
+function loadEnv() {
+  const envPath = path.join(__dirname, '.env');
+  if (!fs.existsSync(envPath)) return;
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  envContent.split(/\r?\n/).forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    const parts = trimmed.split('=');
+    if (parts.length < 2) return;
+    const key = parts[0].trim();
+    const value = parts.slice(1).join('=').trim().replace(/(^['"]|['"]$)/g, '');
+    process.env[key] = value;
+  });
+}
 
-/**
- * ========================================================================
- * 🧪 CURL TEST SCENARIOS (실행 및 통합 검증 시나리오)
- * ========================================================================
- *
- * 아래 cURL 스크립트를 사용하여 가상 통합 백엔드 API를 테스트할 수 있습니다.
- *
- * 1. 일반 로그인 테스트
- * curl -X POST http://localhost:3000/api/auth/login \
- *   -H "Content-Type: application/json" \
- *   -d "{\"email\":\"franchise_owner@eatspay.com\",\"password\":\"Password123!\"}"
- *
- * 2. 소셜 로그인 테스트
- * curl -X POST http://localhost:3000/api/auth/social \
- *   -H "Content-Type: application/json" \
- *   -d "{\"provider\":\"KAKAO\",\"accessToken\":\"mock_kakao_token\"}"
- *
- * 3. 가상계좌 발급 심사 신청 등록 (Multipart 파일 첨부 포함)
- * curl -X POST http://localhost:3000/api/franchise/accounts \
- *   -H "Authorization: Bearer mocked_jwt_token_here" \
- *   -F "franchiseName=이츠분식 강남점" \
- *   -F "businessNumber=120-00-12345" \
- *   -F "bankCode=088" \
- *   -F "representativeName=홍길동" \
- *   -F "documentFile=@biz_cert_mock.jpg"
- *
- * 4. 대행비 카드 결제 충전 (4.602% 수수료 검증 및 mock Signature 헤더 필수)
- * curl -X POST http://localhost:3000/api/payment/charge \
- *   -H "Authorization: Bearer mocked_jwt_token_here" \
- *   -H "Content-Type: application/json" \
- *   -H "x-eatspay-signature: mocked_signature" \
- *   -H "x-eatspay-timestamp: 1716876608" \
- *   -d "{\"amount\":100000,\"calculatedFee\":4602,\"totalAmount\":104602,\"cardId\":\"card_ref_88204\",\"paymentGateway\":\"KCP\"}"
- *
- * 5. 결제 및 충전 히스토리 필터 조회
- * curl -X GET "http://localhost:3000/api/payment/history?startDate=2026-05-01&endDate=2026-05-30&type=ALL" \
- *   -H "Authorization: Bearer mocked_jwt_token_here"
- *
- * 6. 본사 관리자용 가상계좌 승인 처리 (Admin 토큰 필요)
- * curl -X POST http://localhost:3000/api/admin/accounts/approve \
- *   -H "Authorization: Bearer mocked_admin_token" \
- *   -H "Content-Type: application/json" \
- *   -d "{\"requestId\":\"REQ-20260528-0912\",\"action\":\"APPROVED\",\"assignedVirtualAccount\":{\"bankCode\":\"088\",\"bankName\":\"신한은행\",\"accountNumber\":\"562-901-209384\",\"accountHolder\":\"(주)이츠페이_강남점\"}}"
- *
- * 7. 본사 관리자용 거래 취소 및 정산 롤백 처리 (Double Auth 및 Signature 헤더 필수)
- * curl -X POST http://localhost:3000/api/admin/settlement/rollback \
- *   -H "Authorization: Bearer mocked_admin_token" \
- *   -H "Content-Type: application/json" \
- *   -H "x-eatspay-signature: mocked_signature" \
- *   -H "x-eatspay-timestamp: 1716876608" \
- *   -d "{\"targetTransactionId\":\"TXN-20260528-9840294\",\"reason\":\"가맹점 중복 결제 확인\",\"doubleAuthToken\":\"ADMIN_2FA_TOKEN_VERIFIED\"}"
- */
+function asyncHandler(handler) {
+  return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+}
+
+function singleUpload(fieldName) {
+  return (req, res, next) => {
+    upload.single(fieldName)(req, res, err => {
+      if (!err) return next();
+      if (err.message === 'INVALID_FILE_FORMAT') {
+        return sendError(res, 415, 'INVALID_FILE_FORMAT', 'Only pdf, jpg, jpeg, and png files are allowed.');
+      }
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return sendError(res, 413, 'FILE_SIZE_LIMIT_EXCEEDED', 'Attachment size must be 10MB or less.');
+      }
+      return sendError(res, 400, 'UPLOAD_ERROR', err.message);
+    });
+  };
+}
+
+function logError(code, message, details = []) {
+  console.error(`[${new Date().toISOString()}] [${code}] ${message}`, JSON.stringify(details));
+}
+
+function sendError(res, statusCode, code, message, details = []) {
+  logError(code, message, details);
+  return res.status(statusCode).json({
+    success: false,
+    error: {
+      code,
+      message,
+      details,
+      timestamp: new Date().toISOString()
+    }
+  });
+}
+
+function handleError(err, res) {
+  if (err.code === '23505') {
+    return sendError(res, 409, 'ALREADY_EXISTS', 'Unique constraint conflict.');
+  }
+  if (err.code === 'FRANCHISE_NOT_FOUND') {
+    return sendError(res, 404, 'FRANCHISE_NOT_FOUND', 'Franchise was not found.');
+  }
+  if (err.code === 'INSUFFICIENT_BALANCE') {
+    return sendError(res, 400, 'INSUFFICIENT_BALANCE', 'Insufficient balance for rollback.');
+  }
+  console.error(err);
+  return sendError(res, 500, 'INTERNAL_SERVER_ERROR', 'Unexpected server error.');
+}
+
+async function authenticate(req, res, next) {
+  try {
+    const user = await userFromRequest(req);
+    if (!user) {
+      return sendError(res, 401, 'UNAUTHORIZED', 'Valid bearer token is required.');
+    }
+    req.user = user;
+    return next();
+  } catch (err) {
+    return sendError(res, 401, 'UNAUTHORIZED', 'Valid bearer token is required.');
+  }
+}
+
+async function authenticateAdmin(req, res, next) {
+  const authHeader = req.headers.authorization || '';
+  if (process.env.NODE_ENV !== 'production' && ['Bearer mocked_admin_token', 'Bearer dev-admin-token'].includes(authHeader)) {
+    req.user = { id: 0, role: 'ADMIN', email: 'mocked-admin' };
+    return next();
+  }
+  await authenticate(req, res, () => {
+    if (req.user.role !== 'ADMIN') {
+      return sendError(res, 403, 'ACCESS_DENIED', 'Admin role is required.');
+    }
+    return next();
+  });
+}
+
+async function userFromRequest(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.slice('Bearer '.length);
+  const payload = verifyToken(token);
+  return repo.findUserById(payload.sub);
+}
+
+function verifySignature(req, res, next) {
+  const signature = req.headers['x-eatspay-signature'];
+  const timestamp = req.headers['x-eatspay-timestamp'];
+  if (!signature || !timestamp) {
+    return sendError(res, 403, 'SIGNATURE_VERIFICATION_FAILED', 'HMAC signature headers are required.');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - parseInt(timestamp, 10)) > 300) {
+    return sendError(res, 403, 'SIGNATURE_VERIFICATION_FAILED', 'Request timestamp is outside the allowed window.');
+  }
+
+  const expected = crypto
+    .createHmac('sha256', process.env.EATSPAY_HMAC_SECRET)
+    .update(JSON.stringify(req.body) + timestamp)
+    .digest('hex');
+  const provided = Buffer.from(String(signature), 'hex');
+  const calculated = Buffer.from(expected, 'hex');
+  if (provided.length !== calculated.length || !crypto.timingSafeEqual(provided, calculated)) {
+    return sendError(res, 403, 'SIGNATURE_VERIFICATION_FAILED', 'Invalid HMAC signature.');
+  }
+  return next();
+}
+
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = await scrypt(password, salt);
+  return `scrypt$${salt}$${hash}`;
+}
+
+async function verifyPassword(password, stored) {
+  const [scheme, salt, hash] = String(stored).split('$');
+  if (scheme !== 'scrypt' || !salt || !hash) return false;
+  const candidate = await scrypt(password, salt);
+  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(candidate, 'hex'));
+}
+
+function scrypt(password, salt) {
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 64, (err, derivedKey) => {
+      if (err) reject(err);
+      else resolve(derivedKey.toString('hex'));
+    });
+  });
+}
+
+function signToken(user) {
+  const header = base64UrlEncode({ alg: 'HS256', typ: 'JWT' });
+  const payload = base64UrlEncode({
+    sub: user.id,
+    role: user.role,
+    exp: Math.floor(Date.now() / 1000) + 86400
+  });
+  const body = `${header}.${payload}`;
+  const signature = crypto.createHmac('sha256', process.env.JWT_SECRET).update(body).digest('base64url');
+  return `${body}.${signature}`;
+}
+
+function verifyToken(token) {
+  const [header, payload, signature] = String(token).split('.');
+  if (!header || !payload || !signature) throw new Error('Invalid token');
+  const body = `${header}.${payload}`;
+  const expected = crypto.createHmac('sha256', process.env.JWT_SECRET).update(body).digest('base64url');
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    throw new Error('Invalid token');
+  }
+  const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+  if (!decoded.exp || decoded.exp < Math.floor(Date.now() / 1000)) {
+    throw new Error('Expired token');
+  }
+  return decoded;
+}
+
+function base64UrlEncode(value) {
+  return Buffer.from(JSON.stringify(value)).toString('base64url');
+}
+
+async function verifyBusinessNumber(clean) {
+  if (process.env.NTS_SERVICE_KEY) {
+    const apiUrl = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${process.env.NTS_SERVICE_KEY}`;
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ b_no: [clean] })
+    });
+    if (!response.ok) return false;
+    const result = await response.json();
+    return result.data?.[0]?.b_stt_cd === '01';
+  }
+
+  const weights = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+  let sum = 0;
+  for (let i = 0; i < 8; i += 1) {
+    sum += parseInt(clean[i], 10) * weights[i];
+  }
+  const val = parseInt(clean[8], 10) * weights[8];
+  sum += Math.floor(val / 10) + (val % 10);
+  const checkDigit = (10 - (sum % 10)) % 10;
+  return checkDigit === parseInt(clean[9], 10);
+}
+
+function generateId(prefix, randomDigits) {
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const min = 10 ** (randomDigits - 1);
+  const max = 10 ** randomDigits - 1;
+  return `${prefix}-${today}-${crypto.randomInt(min, max)}`;
+}
+
+function createTemporaryPassword() {
+  return `Ep!${crypto.randomBytes(9).toString('base64url')}`;
+}
+
+function safeFileKey(fileName) {
+  return path.basename(String(fileName)).replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+async function persistUpload(file, uploadedBy) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const fileKey = `${Date.now()}-${crypto.randomUUID()}${ext}`;
+  const storagePath = path.join(uploadDir, fileKey);
+  await fs.promises.writeFile(storagePath, file.buffer);
+  return repo.recordFile({
+    fileKey,
+    originalName: file.originalname,
+    mimeType: file.mimetype,
+    sizeBytes: file.size,
+    storagePath,
+    uploadedBy
+  });
+}
+
+function toCsv(rows) {
+  const headers = [
+    'settledAt',
+    'approvalNo',
+    'pgTxId',
+    'customerId',
+    'agencyName',
+    'franchiseName',
+    'paymentAmt',
+    'svcFee',
+    'netAmt',
+    'deliveryAgency',
+    'pg',
+    'status',
+    'bankCode',
+    'accountNo'
+  ];
+  const lines = [headers.join(',')];
+  rows.forEach(row => {
+    lines.push(headers.map(header => csvCell(row[header])).join(','));
+  });
+  return lines.join('\r\n');
+}
+
+function csvCell(value) {
+  const text = value == null ? '' : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function publicUser(user) {
+  const isAdmin = user.role === 'ADMIN';
+  const approvalState = isAdmin
+    ? 'APPROVED'
+    : user.role === 'OWNER'
+      ? 'APPROVED'
+      : user.role === 'OWNER_REJECTED'
+        ? 'REJECTED'
+        : 'PENDING';
+  const adminDisplayName = user.name || 'Eats Pay Admin';
+  return {
+    id: user.id,
+    name: user.name,
+    franchiseName: isAdmin ? adminDisplayName : user.franchiseName,
+    franchiseId: isAdmin ? user.id : user.franchiseId,
+    businessNumber: isAdmin ? null : user.businessNumber,
+    phone: isAdmin ? null : user.phone,
+    address: isAdmin ? null : user.address,
+    tel: isAdmin ? null : user.tel,
+    role: user.role,
+    approvalState,
+    approvalLabel: approvalState === 'APPROVED'
+        ? '\uC2B9\uC778\uC644\uB8CC'
+        : approvalState === 'REJECTED'
+          ? '\uC2B9\uC778\uAC70\uC808'
+          : '\uC2B9\uC778\uB300\uAE30'
+  };
+}
+
+function displayAgencyName(name) {
+  const normalized = String(name || '').trim();
+  if (!normalized || normalized === 'undefined' || normalized === '본사') {
+    return DEFAULT_AGENCY_NAME;
+  }
+  return normalized;
+}
+
+function formatDate(value) {
+  if (!value) return '';
+  return formatKstDate(value);
+}
+
+function formatKstDate(value) {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date(value));
+}
+
+function formatKstDateTime(value) {
+  if (!value) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(new Date(value));
+  const values = Object.fromEntries(
+    parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value])
+  );
+  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}`;
+}
+
+function inferCardName(digits) {
+  if (digits.startsWith('9')) return 'BC Card';
+  if (digits.startsWith('8')) return 'Hyundai Card';
+  if (digits.startsWith('5')) return 'Lotte Card';
+  return 'Samsung Card';
+}
+
+function formatCardExpireDate(month, year) {
+  const mm = String(month).replace(/[^0-9]/g, '').padStart(2, '0').slice(-2);
+  const yy = String(year).replace(/[^0-9]/g, '').padStart(2, '0').slice(-2);
+  return `${yy}${mm}`;
+}
+
+async function seedDeliveryAgencies() {
+  const existing = await repo.listDeliveryAgencies();
+  if (existing.length) return;
+
+  const adminHtmlPath = path.join(__dirname, '?댁툩?섏씠_愿由ъ옄_?쒖뒪??10.html');
+  if (!fs.existsSync(adminHtmlPath)) return;
+
+  const html = fs.readFileSync(adminHtmlPath, 'utf8');
+  const start = html.indexOf('deliveryAgencyList: [');
+  const end = html.indexOf('],', start);
+  if (start === -1 || end === -1) return;
+
+  const slice = html.slice(start, end);
+  const regex = /\{id:(\d+),name:"([^"]+)",status:"([^"]+)"\}/g;
+  const items = [];
+  let match;
+  while ((match = regex.exec(slice))) {
+    items.push({
+      name: match[2],
+      status: match[3],
+      sortOrder: Number(match[1]) || items.length
+    });
+  }
+
+  for (const item of items) {
+    await repo.createDeliveryAgency(item.name, item.status, item.sortOrder);
+  }
+}
+
+async function ghPaymentsRequest(pathname, { method = 'GET', body } = {}) {
+  if (!process.env.GH_PAYMENTS_PAY_KEY) {
+    throw new Error('GH_PAYMENTS_PAY_KEY is required for GH Payments integration.');
+  }
+
+  const headers = {
+    Authorization: process.env.GH_PAYMENTS_PAY_KEY,
+    Accept: 'application/json'
+  };
+
+  const init = { method, headers };
+  if (body !== undefined && method !== 'GET') {
+    headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(body);
+  }
+
+  return fetch(`${GH_PAYMENTS_BASE_URL}${pathname}`, init);
+}
+
+async function relayProviderResponse(providerResponse, res) {
+  const contentType = providerResponse.headers.get('content-type') || 'application/json';
+  res.status(providerResponse.status);
+  res.setHeader('Content-Type', contentType);
+
+  const text = await providerResponse.text();
+  if (!text) {
+    return res.end();
+  }
+
+  if (contentType.includes('application/json')) {
+    return res.send(text);
+  }
+
+  return res.send(text);
+}
+
+module.exports = app;

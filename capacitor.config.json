@@ -1,0 +1,12 @@
+{
+  "appId": "kr.co.eatspay.app",
+  "appName": "eats PAY",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
+}

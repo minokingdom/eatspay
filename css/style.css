@@ -150,6 +150,34 @@ html, body {
   width: auto;
 }
 
+html.native-app,
+html.native-app body {
+  background: var(--bg-white);
+}
+
+html.native-app #app-shell {
+  display: block;
+  background: var(--bg-white);
+}
+
+html.native-app .phone-frame {
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+html.native-app .status-bar {
+  display: none;
+}
+
+html.native-app .screen-container {
+  height: 100vh;
+  height: 100dvh;
+}
+
 /* === Screen Container === */
 .screen-container {
   flex: 1;
@@ -543,6 +571,69 @@ html, body {
 .banner-text .main {
   font-size: 15px;
   font-weight: 700;
+}
+
+@keyframes eatspay-shine {
+  0% { transform: translateX(-80%) rotate(18deg); opacity: 0; }
+  35% { opacity: .8; }
+  65% { opacity: .8; }
+  100% { transform: translateX(340%) rotate(18deg); opacity: 0; }
+}
+
+.metal-benefit-banner {
+  border: 1.5px solid rgba(106, 184, 124, .58);
+  background:
+    linear-gradient(118deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.82) 12%, rgba(255,255,255,.18) 24%, transparent 36%),
+    linear-gradient(135deg, #eefaf1 0%, #ffffff 34%, #e7f3ff 67%, #f5fff7 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    inset 0 -1px 0 rgba(95, 150, 110, .12),
+    0 5px 16px rgba(30, 95, 52, .08);
+}
+
+.metal-benefit-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent, rgba(255,255,255,.36), transparent),
+    radial-gradient(circle at 18% 0%, rgba(255,255,255,.78), transparent 32%),
+    radial-gradient(circle at 88% 100%, rgba(170,211,255,.35), transparent 36%);
+  opacity: .82;
+  pointer-events: none;
+}
+
+.metal-benefit-sheen {
+  position: absolute;
+  inset: -45% auto auto -42%;
+  width: 46%;
+  height: 190%;
+  background: linear-gradient(105deg, transparent 15%, rgba(255,255,255,.25) 32%, rgba(255,255,255,.92) 48%, rgba(194,218,255,.38) 58%, transparent 78%);
+  filter: blur(.2px);
+  transform: rotate(17deg);
+  animation: metallicSweep 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes metallicSweep {
+  0% { transform: translateX(-60%) rotate(17deg); opacity: 0; }
+  18% { opacity: .9; }
+  58% { opacity: .9; }
+  100% { transform: translateX(370%) rotate(17deg); opacity: 0; }
+}
+
+.installment-slide-enter {
+  animation: installmentSlideIn .42s ease both;
+}
+
+@keyframes installmentSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Talk section */
@@ -1169,6 +1260,157 @@ html, body {
   transform: translateX(-50%) translateY(0);
 }
 
+/* === Photo Picker Sheet === */
+.photo-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1100;
+}
+
+.photo-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.photo-sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  width: min(390px - 24px, calc(100vw - 24px));
+  max-width: 366px;
+  transform: translateX(-50%) translateY(120%);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  padding: 12px;
+  transition: transform 0.22s ease;
+  z-index: 1200;
+}
+
+.photo-sheet.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+.photo-sheet-handle {
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: #d8d8d8;
+  margin: 0 auto 10px;
+}
+
+.photo-sheet-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.photo-sheet-option,
+.photo-sheet-cancel {
+  width: 100%;
+  height: 44px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1.5px solid var(--border-color);
+  background: #fff;
+  color: var(--text-primary);
+}
+
+.photo-sheet-option + .photo-sheet-option {
+  margin-top: 8px;
+}
+
+.photo-sheet-cancel {
+  margin-top: 10px;
+  background: #f7f7f7;
+  color: var(--text-secondary);
+}
+
+/* ==========================================
+   APP DIALOG
+   ========================================== */
+.app-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: none;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.app-dialog-backdrop.show {
+  display: block;
+}
+
+.app-dialog {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 10001;
+  width: min(340px, calc(100vw - 48px));
+  display: none;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-white);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+  padding: 20px;
+}
+
+.app-dialog.show {
+  display: block;
+}
+
+.app-dialog-title {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.app-dialog-message {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.app-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.app-dialog-btn {
+  min-width: 76px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.app-dialog-btn-cancel {
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-white);
+  color: var(--text-secondary);
+}
+
+.app-dialog-btn-confirm {
+  border: 1.5px solid var(--green-primary);
+  background: var(--green-primary);
+  color: #fff;
+}
+
 /* ==========================================
    COUNTDOWN TIMER
    ========================================== */
@@ -1249,11 +1491,11 @@ html, body {
 @keyframes splashFadeIn {
   0% {
     opacity: 0;
-    transform: scale(0.8);
+    transform: scale(0.72);
   }
   100% {
     opacity: 1;
-    transform: scale(1.15);
+    transform: scale(1);
   }
 }
 
@@ -1270,10 +1512,9 @@ html, body {
 
 @keyframes splashFloat {
   0%, 100% {
-    transform: translateY(0) scale(1.15);
+    transform: translateY(0) scale(1);
   }
   50% {
-    transform: translateY(-8px) scale(1.15);
+    transform: translateY(-6px) scale(1);
   }
 }
-

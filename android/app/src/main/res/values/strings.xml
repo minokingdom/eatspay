@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">eats PAY</string>
+    <string name="title_activity_main">eats PAY</string>
+    <string name="package_name">kr.co.eatspay.app</string>
+    <string name="custom_url_scheme">kr.co.eatspay.app</string>
+</resources>
