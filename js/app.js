@@ -140,7 +140,8 @@ function renderChargeCards(selector, cards) {
     const isPrimary = index === 0;
     const borderColor = isPrimary ? '#3a9430' : 'var(--border-color)';
     const label = card.cardCompany || card.cardName || card.alias || '\uCE74\uB4DC';
-    const aliasLabel = card.alias && card.alias !== label ? card.alias : '';
+    const alias = String(card.alias || '').trim();
+    const aliasLabel = alias && alias !== label && !['카드', 'Card', 'card'].includes(alias) ? alias : '';
     const masked = card.maskedNumber || '****-****-****-0000';
     return `
       <div class="charge-card-option${isPrimary ? ' active' : ''}" data-card="${escapeHtml(card.id)}" style="border: 1.5px solid ${borderColor}; border-radius: var(--radius); padding: 12px; background: var(--bg-white); cursor: pointer; display: flex; flex-direction: column; gap: 6px; box-shadow: 1px 1px 4px rgba(0,0,0,0.05); transition: border-color 0.2s;">
