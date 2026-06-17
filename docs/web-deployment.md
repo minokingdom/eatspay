@@ -108,10 +108,10 @@ That lets the same build work on the web and inside the Android app without a tu
 
 ## Billing integration
 
-When `GH_PAYMENTS_PAY_KEY` is present, the server proxies:
+When a real `GH_PAYMENTS_PAY_KEY` is present, the server proxies:
 
 - `POST /api/card/register` -> `POST /api/billing/reg`
 - `POST /api/payment/charge` -> `POST /api/billing/pay` when the card id starts with `rb_`
 - admin-only proxy endpoints under `/api/ghpayments/*`
 
-If the key is missing, the app keeps its existing local fallback behavior for development.
+If the key is missing or still set to a placeholder such as `replace-with-gh-pay-key`, card registration skips the PG call and stores the card metadata in PostgreSQL only. Add the real PG key later and restart the server to enable GH Payments billing registration.

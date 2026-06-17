@@ -665,7 +665,7 @@ app.post('/api/payment/charge', authenticate, asyncHandler(async (req, res) => {
     return sendError(res, 402, 'CARD_LIMIT_EXCEEDED', 'Card limit exceeded.');
   }
 
-  const useProvider = Boolean(process.env.GH_PAYMENTS_PAY_KEY) && String(cardId).startsWith('rb_');
+  const useProvider = hasGhPaymentsPayKey() && String(cardId).startsWith('rb_');
   if (useProvider) {
     const transactionId = generateId('TXN', 7);
     const providerResponse = await ghPaymentsRequest('/api/billing/pay', {
@@ -849,7 +849,7 @@ app.post('/api/card/register', authenticate, asyncHandler(async (req, res) => {
     return sendError(res, 400, 'MISSING_CARD_COMPANY', 'Card company is required.');
   }
 
-  if (process.env.GH_PAYMENTS_PAY_KEY) {
+  if (hasGhPaymentsPayKey()) {
     const response = await ghPaymentsRequest('/api/billing/reg', {
       method: 'POST',
       body: {
@@ -859,7 +859,7 @@ app.post('/api/card/register', authenticate, asyncHandler(async (req, res) => {
           cardExpireDate: formatCardExpireDate(expiryMonth, expiryYear),
           cardPassword: String(cardPw).replace(/[^0-9]/g, '').slice(0, 2),
           socialNumber: String(identity).replace(/[^0-9]/g, ''),
-          productName: 'eats PAY 移대뱶 ?깅줉',
+          productName: 'eats PAY 카드 등록',
           payerName: req.user.name || '',
           payerEmail: req.user.email || '',
           payerTel: req.user.phone || ''
@@ -2217,13 +2217,32 @@ async function seedDeliveryAgencies() {
   }
 }
 
+function hasGhPaymentsPayKey() {
+  const key = String(process.env.GH_PAYMENTS_PAY_KEY || '').trim();
+  if (!key) return false;
+  const normalized = key.toLowerCase();
+  if (
+    normalized === 'replace-with-gh-pay-key' ||
+    normalized === 'your-gh-pay-key' ||
+    normalized === 'your-real-key' ||
+    normalized === 'test' ||
+    normalized === 'none' ||
+    normalized === 'null'
+  ) {
+    return false;
+  }
+  if (normalized.startsWith('replace-') || normalized.includes('replace-with')) return false;
+  return true;
+}
+
 async function ghPaymentsRequest(pathname, { method = 'GET', body } = {}) {
-  if (!process.env.GH_PAYMENTS_PAY_KEY) {
+  if (!hasGhPaymentsPayKey()) {
     throw new Error('GH_PAYMENTS_PAY_KEY is required for GH Payments integration.');
   }
 
+  const payKey = String(process.env.GH_PAYMENTS_PAY_KEY || '').trim();
   const headers = {
-    Authorization: process.env.GH_PAYMENTS_PAY_KEY,
+    Authorization: payKey,
     Accept: 'application/json'
   };
 
