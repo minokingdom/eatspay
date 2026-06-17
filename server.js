@@ -210,29 +210,6 @@ app.set('trust proxy', 1);
 const GH_PAYMENTS_BASE_URL = (process.env.GH_PAYMENTS_BASE_URL || 'https://api.ghpayments.kr').replace(/\/$/, '');
 
 app.get('/healthz', (req, res) => {
-  const agenciesForAdmin = agencies.map(agency => ({
-    ...agency,
-    name: displayAgencyName(agency.name)
-  }));
-  const agencyLevelById = new Map();
-  const resolveAgencyLevel = agency => {
-    const key = String(agency.id);
-    if (agencyLevelById.has(key)) return agencyLevelById.get(key);
-    if (!agency.parentId) {
-      agencyLevelById.set(key, 1);
-      return 1;
-    }
-    const parent = agenciesForAdmin.find(item => String(item.id) === String(agency.parentId));
-    const level = parent ? Math.min(resolveAgencyLevel(parent) + 1, 4) : 1;
-    agencyLevelById.set(key, level);
-    return level;
-  };
-  agenciesForAdmin.forEach(agency => {
-    agency.level = resolveAgencyLevel(agency);
-    agency.region = agency.address || '';
-    agency.deliveryNote = agency.deliveryNote || '';
-  });
-
   return res.status(200).json({
     ok: true,
     service: 'eatspay',
@@ -1716,6 +1693,7 @@ app.get('/api/admin/bootstrap', authenticateAdmin, asyncHandler(async (req, res)
   const todayPaymentTotal = paymentRows
     .filter(payment => payment.date.startsWith(today))
     .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const agenciesForAdmin = buildAdminAgencies(agencies);
 
   return res.status(200).json({
     success: true,
@@ -2334,6 +2312,32 @@ function displayAgencyName(name) {
     return DEFAULT_AGENCY_NAME;
   }
   return normalized;
+}
+
+function buildAdminAgencies(agencies = []) {
+  const items = agencies.map(agency => ({
+    ...agency,
+    name: displayAgencyName(agency.name)
+  }));
+  const levelById = new Map();
+  const resolveLevel = agency => {
+    const key = String(agency.id);
+    if (levelById.has(key)) return levelById.get(key);
+    if (!agency.parentId) {
+      levelById.set(key, 1);
+      return 1;
+    }
+    const parent = items.find(item => String(item.id) === String(agency.parentId));
+    const level = parent ? Math.min(resolveLevel(parent) + 1, 4) : 1;
+    levelById.set(key, level);
+    return level;
+  };
+  return items.map(agency => ({
+    ...agency,
+    level: resolveLevel(agency),
+    region: agency.address || '',
+    deliveryNote: agency.deliveryNote || ''
+  }));
 }
 
 function formatDate(value) {
