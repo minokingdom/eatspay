@@ -111,6 +111,28 @@ function toPgSettlement(row) {
   };
 }
 
+function toAgency(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    type: row.type,
+    parentId: row.parent_id,
+    name: row.name,
+    address: row.address,
+    loginId: row.login_id,
+    passwordHash: row.password_hash,
+    owner: row.owner,
+    phone: row.phone,
+    feeRate: Number(row.fee_rate || 0),
+    joinCode: row.join_code,
+    contractFileKey: row.contract_file_key,
+    settleBankName: row.settle_bank_name,
+    settleAccountNo: row.settle_account_no,
+    settleAccountHolder: row.settle_account_holder,
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at
+  };
+}
+
 function toNotification(row) {
   if (!row) return null;
   return {
@@ -140,6 +162,28 @@ function createRepository(pool) {
     async findUserByFranchiseId(franchiseId) {
       const result = await pool.query('SELECT * FROM users WHERE franchise_id = $1', [franchiseId]);
       return toUser(result.rows[0]);
+    },
+
+    async findAgencyById(agencyId) {
+      const result = await pool.query(
+        `SELECT id, type, parent_id, name, address, login_id, password_hash, owner, phone, fee_rate, join_code,
+                contract_file_key, settle_bank_name, settle_account_no, settle_account_holder, created_at
+         FROM agencies
+         WHERE id = $1`,
+        [agencyId]
+      );
+      return toAgency(result.rows[0]);
+    },
+
+    async findAgencyByLoginId(loginId) {
+      const result = await pool.query(
+        `SELECT id, type, parent_id, name, address, login_id, password_hash, owner, phone, fee_rate, join_code,
+                contract_file_key, settle_bank_name, settle_account_no, settle_account_holder, created_at
+         FROM agencies
+         WHERE login_id = $1 OR join_code = $1`,
+        [loginId]
+      );
+      return toAgency(result.rows[0]);
     },
 
     async findUserByBusinessNumber(businessNumber) {
@@ -1054,6 +1098,44 @@ function createRepository(pool) {
       const count = await pool.query(`SELECT count(*)::int AS count FROM transactions WHERE ${where}`, whereParams);
       return {
         items: items.rows.map(toTransaction),
+        totalItems: count.rows[0]?.count || 0
+      };
+    },
+
+    async listAgencyTransactions(filters) {
+      const params = [filters.startDate, filters.endDate, filters.agencyId];
+      const items = await pool.query(
+        `SELECT
+           transactions.*,
+           users.franchise_name,
+           users.agency_id,
+           agencies.name AS agency_name,
+           agencies.fee_rate AS agency_fee_rate
+         FROM transactions
+         JOIN users ON users.franchise_id = transactions.franchise_id
+         LEFT JOIN agencies ON agencies.id = users.agency_id
+         WHERE transactions.created_at::date BETWEEN $1::date AND $2::date
+           AND users.agency_id = $3
+         ORDER BY transactions.created_at DESC
+         LIMIT $4 OFFSET $5`,
+        [...params, filters.limit || 100, filters.offset || 0]
+      );
+      const count = await pool.query(
+        `SELECT count(*)::int AS count
+         FROM transactions
+         JOIN users ON users.franchise_id = transactions.franchise_id
+         WHERE transactions.created_at::date BETWEEN $1::date AND $2::date
+           AND users.agency_id = $3`,
+        params
+      );
+      return {
+        items: items.rows.map(row => ({
+          ...toTransaction(row),
+          franchiseName: row.franchise_name,
+          agencyId: row.agency_id,
+          agencyName: row.agency_name,
+          agencyFeeRate: Number(row.agency_fee_rate || 0)
+        })),
         totalItems: count.rows[0]?.count || 0
       };
     },

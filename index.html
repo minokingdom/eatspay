@@ -8,7 +8,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Square:wght@400;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=1.0.16" />
+  <link rel="stylesheet" href="css/style.css?v=1.0.17" />
 
 </head>
 <body>
@@ -202,6 +202,11 @@
         <div class="scrollable-content" style="padding-bottom: 20px;">
           <div class="session-store-name" style="font-size: 16px; font-weight: 800; color: var(--text-primary); padding: 0 24px; margin-bottom: 16px;">-</div>
 
+          <div id="my-agency-settlement-btn" style="display:none; margin: 0 24px 12px; padding: 16px; border: 1.5px solid var(--green-primary); border-radius: var(--radius); background: #f1fbef; cursor: pointer; flex-direction: column;">
+            <span style="font-size: 15px; font-weight: 900; color: var(--green-dark); margin-bottom: 4px;">대리점 정산</span>
+            <span style="font-size: 12px; color: var(--text-secondary); font-weight: 700;">기간별 결제내역과 수수료를 확인하세요</span>
+          </div>
+
           <div id="my-card-manage-btn" style="margin: 0 24px 12px; padding: 16px; border: 1.5px solid var(--border-color); border-radius: var(--radius); background: var(--bg-white); cursor: pointer; display: flex; flex-direction: column;">
             <span style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px;">카드관리</span>
             <span style="font-size: 12px; color: var(--text-secondary); font-weight: 700;">결제할 카드를 등록/관리 해주세요</span>
@@ -242,6 +247,60 @@
             <span class="nav-label">고객센터</span>
           </div>
         </div>
+      </div>
+
+      <!-- 대리점 정산 화면 -->
+      <div id="screen-agency" class="screen">
+        <div class="app-header" style="display:flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding: 20px 24px 8px; border-bottom: none; flex-shrink: 0;">
+          <div>
+            <div style="font-size: 20px; font-weight: 900; color: var(--text-primary); margin-bottom: 4px;">대리점 정산</div>
+            <div id="agency-screen-name" style="font-size: 12px; font-weight: 800; color: var(--text-secondary);">대리점 로그인이 필요합니다.</div>
+          </div>
+          <img src="logo.png" style="height: 28px; width: auto;" alt="eats PAY">
+        </div>
+
+        <div class="scrollable-content" style="padding: 0 24px 100px;">
+          <div style="border: 1.5px solid var(--border-color); border-radius: var(--radius); padding: 16px; background: var(--bg-white); margin-bottom: 14px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+              <div>
+                <label class="form-label">시작일</label>
+                <input id="agency-start-date" class="form-input" type="date">
+              </div>
+              <div>
+                <label class="form-label">종료일</label>
+                <input id="agency-end-date" class="form-input" type="date">
+              </div>
+            </div>
+            <button id="agency-search-btn" class="btn-primary" style="width:100%; height: 46px; border-radius: var(--radius-sm);">조회하기</button>
+          </div>
+
+          <div id="agency-summary-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+            <div class="agency-summary-card">
+              <span>결제건수</span>
+              <strong id="agency-summary-count">0건</strong>
+            </div>
+            <div class="agency-summary-card">
+              <span>총 결제금액</span>
+              <strong id="agency-summary-payment">0원</strong>
+            </div>
+            <div class="agency-summary-card">
+              <span>서비스수수료</span>
+              <strong id="agency-summary-service">0원</strong>
+            </div>
+            <div class="agency-summary-card">
+              <span>지급 예정액</span>
+              <strong id="agency-summary-net">0원</strong>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px;">
+            <div style="font-size: 15px; font-weight: 900; color: var(--text-primary);">기간 내 결제내역</div>
+            <div id="agency-fee-rate" style="font-size: 11px; font-weight: 800; color: var(--green-primary);">수수료율 -</div>
+          </div>
+          <div id="agency-settlement-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+
+        <div class="bottom-nav"></div>
       </div>
 
       <!-- 로그인 -->

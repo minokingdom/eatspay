@@ -1079,13 +1079,16 @@ function renderDeliveryAgencyList() {
 
 // --- Screen Navigation ---
 function navigate(screenId, direction = 'forward') {
-  const restrictedScreens = ['my', 'payment-history', 'card-list', 'card-add', 'vaccount-list', 'vaccount-add', 'edit-myinfo', 'charge'];
+  const restrictedScreens = ['my', 'payment-history', 'card-list', 'card-add', 'vaccount-list', 'vaccount-add', 'edit-myinfo', 'charge', 'agency'];
   const approvalState = getApprovalState();
 
   if (restrictedScreens.includes(screenId)) {
     if (!isAuthenticated()) {
       showToast('로그인이 필요합니다.');
       screenId = 'login';
+    } else if (screenId === 'agency' && !isAgencyAccount()) {
+      showToast('대리점 계정으로 로그인해야 이용할 수 있습니다.');
+      screenId = 'home';
     } else if (approvalState !== 'approved') {
       showToast(approvalState === 'pending' ? '승인 대기중입니다.' : '승인이 반려된 계정입니다.');
       screenId = 'account-status';
@@ -1152,6 +1155,10 @@ function navigate(screenId, direction = 'forward') {
   if (screenId === 'benefit-cards') {
     renderBenefitCardList();
   }
+  if (screenId === 'agency') {
+    syncAgencyDateRange();
+    void fetchAgencySettlement();
+  }
   if (screenId === 'cs-promo') {
     renderCsInstallmentList();
     void loadInstallmentBanner();
@@ -1186,18 +1193,18 @@ function handleAndroidBackButton() {
 window.EATSPAY_HANDLE_ANDROID_BACK = handleAndroidBackButton;
 
 function updateBottomNav(screenId) {
+  renderBottomNavs(screenId);
   $$('.nav-item').forEach(btn => btn.classList.remove('active'));
   const isHome = ['home', 'charge', 'benefit-cards'].includes(screenId);
+  const isAgencyFlow = ['agency'].includes(screenId);
   const isMyFlow = ['my', 'find-id', 'find-pw', 'card-list', 'card-add', 'payment-history', 'vaccount-list', 'vaccount-add', 'delivery-agency-list', 'edit-myinfo', 'login'].includes(screenId);
   const isCsFlow = ['cs-main', 'cs-guide', 'cs-promo'].includes(screenId);
-  const showMyNav = getApprovalState() === 'approved';
-
-  $$('[id^="nav-my"]').forEach(el => {
-    el.style.display = showMyNav ? '' : 'none';
-  });
+  const showMyNav = isAuthenticated();
   
   if (isHome) {
     $$('[id^="nav-home"]').forEach(el => el.classList.add('active'));
+  } else if (isAgencyFlow) {
+    $$('[id^="nav-agency"]').forEach(el => el.classList.add('active'));
   } else if (isMyFlow) {
     if (showMyNav) {
       $$('[id^="nav-my"]').forEach(el => el.classList.add('active'));
@@ -1205,6 +1212,40 @@ function updateBottomNav(screenId) {
   } else if (isCsFlow) {
     $$('[id^="nav-cs"]').forEach(el => el.classList.add('active'));
   }
+}
+
+function bottomNavSvg(type) {
+  const icons = {
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9.5L12 3l9 6.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 22V12h6v10"/></svg>',
+    agency: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V8l8-4 8 4v12"/><path d="M8 20v-6h8v6"/><path d="M9 9h.01M15 9h.01"/></svg>',
+    my: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+    cs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+  };
+  return icons[type] || '';
+}
+
+function renderBottomNavs(activeScreen = state.currentScreen) {
+  const user = getSessionUser();
+  const items = [{ id: 'home', label: '홈' }];
+  if (isAgencyAccount(user)) items.push({ id: 'agency', label: '대리점' });
+  if (isAuthenticated() && user) items.push({ id: 'my', label: '내정보' });
+  items.push({ id: 'cs', label: '고객센터' });
+  const active = activeScreen === 'agency'
+    ? 'agency'
+    : ['cs-main', 'cs-guide', 'cs-promo'].includes(activeScreen)
+      ? 'cs'
+      : ['my', 'find-id', 'find-pw', 'card-list', 'card-add', 'payment-history', 'vaccount-list', 'vaccount-add', 'delivery-agency-list', 'edit-myinfo', 'login'].includes(activeScreen)
+        ? 'my'
+        : 'home';
+  const html = items.map(item => `
+    <div class="nav-item${active === item.id ? ' active' : ''}" id="nav-${item.id}">
+      ${bottomNavSvg(item.id)}
+      <span class="nav-label">${item.label}</span>
+    </div>
+  `).join('');
+  $$('.bottom-nav').forEach(nav => {
+    nav.innerHTML = html;
+  });
 }
 
 let appDialogQueue = Promise.resolve();
@@ -1338,10 +1379,15 @@ function getSessionUser() {
 function getApprovalState(user = getSessionUser()) {
   if (!user) return 'guest';
   if (user.role === 'ADMIN') return 'approved';
+  if (user.role === 'AGENCY') return 'approved';
   if (user.role === 'OWNER') return 'approved';
   if (user.role === 'OWNER_REJECTED') return 'rejected';
   if (user.role === 'OWNER_PENDING') return 'pending';
   return 'guest';
+}
+
+function isAgencyAccount(user = getSessionUser()) {
+  return Boolean(user && user.role === 'AGENCY' && user.agencyId);
 }
 
 function getLoginDisplayName() {
@@ -1386,6 +1432,7 @@ function syncLoggedInViews() {
   const banner = $('#home-login-banner');
   const storeLabels = $$('.session-store-name');
   const editMyInfoPhone = $('#edit-myinfo-phone');
+  const agencyOnly = isAgencyAccount(user);
 
   if (homeTitle) {
     homeTitle.textContent = user ? displayName : '로그인을 해주세요';
@@ -1425,9 +1472,14 @@ function syncLoggedInViews() {
   }
 
   const showMyNav = Boolean(user);
-  $$('[id^="nav-my"]').forEach(el => {
-    el.style.display = showMyNav ? '' : 'none';
+  renderBottomNavs(state.currentScreen);
+
+  ['#my-card-manage-btn', '#my-payment-history-btn', '#my-vaccount-manage-btn'].forEach(selector => {
+    const el = $(selector);
+    if (el) el.style.display = agencyOnly ? 'none' : 'flex';
   });
+  const agencySettlementBtn = $('#my-agency-settlement-btn');
+  if (agencySettlementBtn) agencySettlementBtn.style.display = agencyOnly ? 'flex' : 'none';
 
   const statusChip = $('#account-status-chip');
   const statusTitle = $('#account-status-title');
@@ -1571,6 +1623,90 @@ function syncPaymentHistoryDateRange(forceToday = false) {
   }
 }
 
+function formatWon(value) {
+  return `${Number(value || 0).toLocaleString('ko-KR')}원`;
+}
+
+function syncAgencyDateRange(forceToday = false) {
+  const startInput = $('#agency-start-date');
+  const endInput = $('#agency-end-date');
+  if (!startInput || !endInput) return;
+  const today = todayYMD();
+  if (forceToday || !startInput.value) startInput.value = today;
+  if (forceToday || !endInput.value) endInput.value = today;
+}
+
+function renderAgencySettlement(data = {}) {
+  const user = getSessionUser();
+  const agencyName = $('#agency-screen-name');
+  const summary = data.summary || {};
+  if (agencyName) {
+    agencyName.textContent = data.agency?.name || user?.agencyName || user?.franchiseName || '대리점';
+  }
+  $('#agency-summary-count') && ($('#agency-summary-count').textContent = `${Number(summary.count || 0).toLocaleString('ko-KR')}건`);
+  $('#agency-summary-payment') && ($('#agency-summary-payment').textContent = formatWon(summary.paymentAmount));
+  $('#agency-summary-service') && ($('#agency-summary-service').textContent = formatWon(summary.serviceFee));
+  $('#agency-summary-net') && ($('#agency-summary-net').textContent = formatWon(summary.agencyNet));
+  $('#agency-fee-rate') && ($('#agency-fee-rate').textContent = `수수료율 ${Number(data.agency?.feeRate || user?.feeRate || 0.3).toFixed(2)}%`);
+
+  const list = $('#agency-settlement-list');
+  const items = Array.isArray(data.items) ? data.items : [];
+  if (!list) return;
+  if (!items.length) {
+    list.innerHTML = '<div style="border:1.5px dashed var(--border-color);border-radius:var(--radius);padding:28px 14px;text-align:center;color:var(--text-muted);font-size:13px;font-weight:800;background:var(--bg-white);">해당 기간의 결제내역이 없습니다.</div>';
+    return;
+  }
+  list.innerHTML = items.map(item => `
+    <div class="agency-settlement-card">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+        <div>
+          <div style="font-size:14px;font-weight:900;color:var(--text-primary);margin-bottom:3px;">${escapeHtml(item.franchiseName || '-')}</div>
+          <div style="font-size:11px;font-weight:800;color:var(--text-muted);">${escapeHtml(item.date || '')}</div>
+        </div>
+        <span style="font-size:11px;font-weight:900;color:${item.status === '취소' ? '#e53935' : 'var(--green-primary)'};">${escapeHtml(item.status || '-')}</span>
+      </div>
+      <div class="agency-settlement-row"><span>승인번호</span><strong style="font-size:11px;">${escapeHtml(item.approvalNo || '-')}</strong></div>
+      <div class="agency-settlement-row"><span>결제금액</span><strong>${formatWon(item.paymentAmount)}</strong></div>
+      <div class="agency-settlement-row"><span>입금액</span><strong>${formatWon(item.depositAmount)}</strong></div>
+      <div class="agency-settlement-row"><span>대리점 수수료</span><strong style="color:var(--green-primary);">${formatWon(item.agencyFee)}</strong></div>
+      <div class="agency-settlement-row"><span>지급 예정액</span><strong style="color:var(--green-dark);">${formatWon(item.agencyNet)}</strong></div>
+    </div>
+  `).join('');
+}
+
+async function fetchAgencySettlement() {
+  if (!isAgencyAccount()) return;
+  syncAgencyDateRange();
+  const startDate = $('#agency-start-date')?.value;
+  const endDate = $('#agency-end-date')?.value;
+  const list = $('#agency-settlement-list');
+  if (!startDate || !endDate) {
+    showToast('조회 기간을 선택해주세요.');
+    return;
+  }
+  if (list) {
+    list.innerHTML = '<div style="padding:24px;text-align:center;"><div class="spinner" style="border-top-color:var(--green-primary);width:28px;height:28px;margin:0 auto;"></div></div>';
+  }
+  try {
+    const response = await fetch(apiUrl(`/api/agency/me/settlements?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&_=${Date.now()}`), {
+      headers: {
+        'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}`
+      },
+      cache: 'no-store'
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(getFriendlyErrorMessage(err, '대리점 정산 내역을 불러오지 못했습니다.'));
+    }
+    const payload = await response.json();
+    renderAgencySettlement(payload.data || {});
+  } catch (error) {
+    console.error(error);
+    renderAgencySettlement({ items: [], summary: {} });
+    showToast(error.message || '대리점 정산 내역을 불러오지 못했습니다.');
+  }
+}
+
 function startSmsCountdown(el) {
   if (!el) return;
   clearInterval(state.smsTimer);
@@ -1627,6 +1763,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (id.startsWith('nav-home')) {
       event.preventDefault();
       navigate('home');
+    } else if (id.startsWith('nav-agency')) {
+      event.preventDefault();
+      navigate('agency');
     } else if (id.startsWith('nav-my')) {
       event.preventDefault();
       navigate('my');
@@ -1677,6 +1816,10 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#to-register')?.addEventListener('click', () => navigate('reg-step1'));
   $('#to-find-id')?.addEventListener('click', () => navigate('find-id'));
   $('#to-find-pw')?.addEventListener('click', () => navigate('find-pw'));
+  $('#my-agency-settlement-btn')?.addEventListener('click', () => navigate('agency'));
+  $('#agency-search-btn')?.addEventListener('click', () => {
+    void fetchAgencySettlement();
+  });
   
   $('#login-submit-btn')?.addEventListener('click', async () => {
     const btn = $('#login-submit-btn');
@@ -1714,7 +1857,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncLoggedInViews();
         const approvalState = getApprovalState(resPayload.data.user || null);
         if (approvalState === 'approved') {
-          if (typeof fetchPaymentHistory === 'function') {
+          if (!isAgencyAccount(resPayload.data.user || null) && typeof fetchPaymentHistory === 'function') {
             fetchPaymentHistory();
           }
           navigate('home');

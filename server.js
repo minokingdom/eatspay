@@ -282,17 +282,30 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
   }
 
   const user = await repo.findUserByEmail(email);
-  if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+  if (user?.passwordHash && await verifyPassword(password, user.passwordHash)) {
+    return res.status(200).json({
+      success: true,
+      data: {
+        accessToken: signToken(user),
+        tokenType: 'Bearer',
+        expiresIn: 86400,
+        user: publicUser(user)
+      }
+    });
+  }
+
+  const agency = await repo.findAgencyByLoginId(email);
+  if (!agency || !agency.passwordHash || !(await verifyPassword(password, agency.passwordHash))) {
     return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid email or password.');
   }
 
   return res.status(200).json({
     success: true,
     data: {
-      accessToken: signToken(user),
+      accessToken: signToken(agencyPrincipal(agency)),
       tokenType: 'Bearer',
       expiresIn: 86400,
-      user: publicUser(user)
+      user: publicUser(agencyPrincipal(agency))
     }
   });
 }));
@@ -747,6 +760,9 @@ app.post('/api/payment/charge', authenticate, asyncHandler(async (req, res) => {
 }));
 
 app.get('/api/payment/history', authenticate, asyncHandler(async (req, res) => {
+  if (req.user.role === 'AGENCY') {
+    return sendError(res, 403, 'ACCESS_DENIED', 'Agency accounts must use the agency settlement API.');
+  }
   const { startDate, endDate, type = 'ALL', page = 1, limit = 10 } = req.query;
   if (!startDate || !endDate) {
     return sendError(res, 400, 'MISSING_DATE_FILTER', 'startDate and endDate are required.');
@@ -773,6 +789,76 @@ app.get('/api/payment/history', authenticate, asyncHandler(async (req, res) => {
     success: true,
     data: {
       items: historyItems,
+      pagination: {
+        currentPage: pNum,
+        totalPages: Math.ceil(totalItems / lNum) || 1,
+        totalItems,
+        limit: lNum
+      }
+    }
+  });
+}));
+
+app.get('/api/agency/me/settlements', authenticate, asyncHandler(async (req, res) => {
+  if (req.user.role !== 'AGENCY') {
+    return sendError(res, 403, 'ACCESS_DENIED', 'Agency role is required.');
+  }
+  const { startDate, endDate, page = 1, limit = 100 } = req.query;
+  if (!startDate || !endDate) {
+    return sendError(res, 400, 'MISSING_DATE_FILTER', 'startDate and endDate are required.');
+  }
+
+  const pNum = Math.max(parseInt(page, 10) || 1, 1);
+  const lNum = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 300);
+  const { items, totalItems } = await repo.listAgencyTransactions({
+    startDate,
+    endDate,
+    agencyId: req.user.agencyId,
+    limit: lNum,
+    offset: (pNum - 1) * lNum
+  });
+  const agencyRate = Number(req.user.feeRate || 0.3);
+  const rows = items.map(item => {
+    const paymentAmount = Number(item.totalAmount || 0);
+    const serviceFee = Number(item.fee || 0);
+    const depositAmount = Number(item.amount || Math.max(paymentAmount - serviceFee, 0));
+    const agencyFee = Math.round(paymentAmount * (agencyRate / 100));
+    const agencyNet = Math.round(agencyFee * 0.967);
+    return {
+      id: item.transactionId,
+      date: formatKstDateTime(item.createdAt),
+      approvalNo: item.transactionId,
+      franchiseId: item.franchiseId,
+      franchiseName: item.franchiseName || `가맹점 ${item.franchiseId}`,
+      paymentAmount,
+      depositAmount,
+      serviceFee,
+      agencyFee,
+      agencyNet,
+      status: item.status === 'SUCCESS' ? '결제완료' : item.status === 'ROLLED_BACK' ? '취소' : item.status
+    };
+  });
+  const summary = rows.reduce((acc, row) => {
+    acc.count += 1;
+    acc.paymentAmount += row.paymentAmount;
+    acc.depositAmount += row.depositAmount;
+    acc.serviceFee += row.serviceFee;
+    acc.agencyFee += row.agencyFee;
+    acc.agencyNet += row.agencyNet;
+    return acc;
+  }, { count: 0, paymentAmount: 0, depositAmount: 0, serviceFee: 0, agencyFee: 0, agencyNet: 0 });
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      agency: {
+        id: req.user.agencyId,
+        name: req.user.agencyName,
+        feeRate: agencyRate
+      },
+      period: { startDate, endDate },
+      summary,
+      items: rows,
       pagination: {
         currentPage: pNum,
         totalPages: Math.ceil(totalItems / lNum) || 1,
@@ -1985,6 +2071,10 @@ async function userFromRequest(req) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.slice('Bearer '.length);
   const payload = verifyToken(token);
+  if (payload.authType === 'agency' || payload.role === 'AGENCY') {
+    const agency = await repo.findAgencyById(payload.sub);
+    return agency ? agencyPrincipal(agency) : null;
+  }
   return repo.findUserById(payload.sub);
 }
 
@@ -2039,6 +2129,7 @@ function signToken(user) {
   const payload = base64UrlEncode({
     sub: user.id,
     role: user.role,
+    authType: user.authType || 'user',
     exp: Math.floor(Date.now() / 1000) + 86400
   });
   const body = `${header}.${payload}`;
@@ -2148,7 +2239,41 @@ function csvCell(value) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
+function agencyPrincipal(agency) {
+  return {
+    id: agency.id,
+    authType: 'agency',
+    role: 'AGENCY',
+    name: agency.owner || agency.name,
+    agencyId: agency.id,
+    agencyName: displayAgencyName(agency.name),
+    franchiseName: displayAgencyName(agency.name),
+    feeRate: Number(agency.feeRate || 0.3),
+    loginId: agency.loginId,
+    phone: agency.phone,
+    passwordHash: agency.passwordHash
+  };
+}
+
 function publicUser(user) {
+  if (user.role === 'AGENCY') {
+    return {
+      id: user.id,
+      name: user.name || user.agencyName,
+      franchiseName: user.agencyName,
+      franchiseId: null,
+      agencyId: user.agencyId,
+      agencyName: user.agencyName,
+      feeRate: Number(user.feeRate || 0.3),
+      businessNumber: null,
+      phone: user.phone || null,
+      address: null,
+      tel: null,
+      role: 'AGENCY',
+      approvalState: 'APPROVED',
+      approvalLabel: '\uC2B9\uC778\uC644\uB8CC'
+    };
+  }
   const isAdmin = user.role === 'ADMIN';
   const approvalState = isAdmin
     ? 'APPROVED'
