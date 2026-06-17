@@ -89,6 +89,42 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+const API_ERROR_MESSAGES = {
+  INVALID_CREDENTIALS: '아이디 또는 비밀번호가 올바르지 않습니다.',
+  UNAUTHORIZED: '로그인이 필요합니다. 다시 로그인해 주세요.',
+  ACCESS_DENIED: '접근 권한이 없습니다.',
+  BAD_REQUEST: '입력값을 다시 확인해 주세요.',
+  USER_NOT_FOUND: '사용자 정보를 찾을 수 없습니다.',
+  CARD_NOT_FOUND: '카드 정보를 찾을 수 없습니다.',
+  MISSING_CARD_COMPANY: '카드사를 선택해 주세요.',
+  MISSING_ALIAS: '카드 별칭을 입력해 주세요.',
+  INVALID_CARD_NUMBER: '카드번호를 다시 확인해 주세요.',
+  GH_PAYMENTS_CARD_REGISTRATION_FAILED: '카드 등록을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  GH_PAYMENTS_BILLING_PAY_FAILED: '결제를 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  ACCOUNT_NOT_FOUND: '가상계좌 정보를 찾을 수 없습니다.',
+  DOCUMENT_FILE_REQUIRED: '포스 사진을 첨부해 주세요.',
+  MISSING_FIELDS: '필수 항목을 모두 입력해 주세요.',
+  INVALID_CURRENT_PASSWORD: '현재 비밀번호가 일치하지 않습니다.'
+};
+
+function getFriendlyErrorMessage(payload, fallback = '요청을 처리하지 못했습니다.') {
+  const code = payload?.error?.code || payload?.code || '';
+  if (code && API_ERROR_MESSAGES[code]) return API_ERROR_MESSAGES[code];
+
+  const raw = String(payload?.error?.message || payload?.message || payload || '').trim();
+  if (!raw) return fallback;
+  const normalized = raw.toLowerCase();
+  if (normalized.includes('invalid email or password')) return API_ERROR_MESSAGES.INVALID_CREDENTIALS;
+  if (normalized.includes('valid bearer token') || normalized.includes('unauthorized')) return API_ERROR_MESSAGES.UNAUTHORIZED;
+  if (normalized.includes('card details')) return '카드 정보를 모두 입력해 주세요.';
+  if (normalized.includes('card company')) return API_ERROR_MESSAGES.MISSING_CARD_COMPANY;
+  if (normalized.includes('card was not found')) return API_ERROR_MESSAGES.CARD_NOT_FOUND;
+  if (normalized.includes('virtual account') && normalized.includes('not found')) return API_ERROR_MESSAGES.ACCOUNT_NOT_FOUND;
+  if (normalized.includes('required') || normalized.includes('missing')) return API_ERROR_MESSAGES.MISSING_FIELDS;
+  if (/^[\x00-\x7F\s.,'":;!?()/-]+$/.test(raw)) return fallback;
+  return raw;
+}
+
 function renderChargeCards(selector, cards) {
   const safeCards = Array.isArray(cards) ? cards : [];
   if (safeCards.length === 0) {
@@ -324,12 +360,12 @@ function renderCardList(cards) {
         });
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error?.message || payload.message || '카드 삭제에 실패했습니다.');
+          throw new Error(getFriendlyErrorMessage(payload, '카드 삭제에 실패했습니다.'));
         }
         showToast('카드가 삭제되었습니다.');
         await refreshCardList();
       } catch (err) {
-        showToast(err.message);
+        showToast(getFriendlyErrorMessage(err, '요청을 처리하지 못했습니다.'));
       }
     });
   });
@@ -403,12 +439,12 @@ function renderVaccountList(accounts) {
         });
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error?.message || payload.message || '가상계좌 삭제에 실패했습니다.');
+          throw new Error(getFriendlyErrorMessage(payload, '가상계좌 삭제에 실패했습니다.'));
         }
         showToast('가상계좌가 삭제되었습니다.');
         await refreshVaccountList();
       } catch (err) {
-        showToast(err.message);
+        showToast(getFriendlyErrorMessage(err, '요청을 처리하지 못했습니다.'));
       }
     });
   });
@@ -1654,7 +1690,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error?.message || errData.message || '로그인에 실패했습니다.');
+        throw new Error(getFriendlyErrorMessage(errData, '로그인에 실패했습니다.'));
       }
 
       const resPayload = await response.json();
@@ -2089,14 +2125,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || '회원가입에 실패했습니다.');
+        throw new Error(getFriendlyErrorMessage(err, '회원가입에 실패했습니다.'));
       }
 
       showToast('가입이 완료되었습니다.');
       state.history = [];
       navigate('login');
     } catch (err) {
-      showToast(err.message);
+      showToast(getFriendlyErrorMessage(err, '요청을 처리하지 못했습니다.'));
     } finally {
       btn.textContent = '가입하기';
       btn.disabled = false;
@@ -2290,14 +2326,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
-          throw new Error(err.error?.message || err.message || '카드 수정에 실패했습니다.');
+          throw new Error(getFriendlyErrorMessage(err, '카드 수정에 실패했습니다.'));
         }
         cardEditDraft = null;
         showToast('카드 정보가 수정되었습니다.');
         navigate('card-list');
         await refreshCardList();
       } catch (err) {
-        showToast(err.message);
+        showToast(getFriendlyErrorMessage(err, '요청을 처리하지 못했습니다.'));
       } finally {
         btn.textContent = '카드수정';
         btn.disabled = false;
@@ -2336,7 +2372,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || '카드 등록에 실패했습니다.');
+        throw new Error(getFriendlyErrorMessage(err, '카드 등록에 실패했습니다.'));
       }
 
       const resJson = await response.json();
@@ -2368,7 +2404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await refreshCardList();
       }
     } catch (err) {
-      showToast(err.message);
+      showToast(getFriendlyErrorMessage(err, '요청을 처리하지 못했습니다.'));
     } finally {
       btn.textContent = '\uCE74\uB4DC\uB4F1\uB85D';
       btn.disabled = false;
@@ -2446,7 +2482,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }).join('');
 
     } catch (err) {
-      showToast(err.message);
+      showToast(getFriendlyErrorMessage(err, '요청을 처리하지 못했습니다.'));
       historyContainer.innerHTML = `
         <div style="text-align:center; padding:40px 20px; color:#e53935; font-weight:700; font-size:14px;">
           데이터를 불러오지 못했습니다.
@@ -2597,7 +2633,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || '가상계좌 등록요청에 실패했습니다.');
+        throw new Error(getFriendlyErrorMessage(err, '가상계좌 등록요청에 실패했습니다.'));
       }
 
       const payload = await response.json().catch(() => null);
@@ -2648,7 +2684,7 @@ document.addEventListener('DOMContentLoaded', () => {
       navigate('vaccount-list');
       await refreshVaccountList();
     } catch (err) {
-      showToast(err.message);
+      showToast(getFriendlyErrorMessage(err, '요청을 처리하지 못했습니다.'));
     } finally {
       btn.textContent = '계좌등록요청';
       btn.disabled = false;
@@ -2697,7 +2733,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const err = await response.json().catch(() => ({}));
       throw new Error(err.error?.code === 'INVALID_CURRENT_PASSWORD'
         ? '현재 비밀번호가 일치하지 않습니다.'
-        : (err.error?.message || '회원정보 변경에 실패했습니다.'));
+        : getFriendlyErrorMessage(err, '회원정보 변경에 실패했습니다.'));
     }
     const data = await response.json().catch(() => null);
     const user = data?.data?.user;
@@ -2721,7 +2757,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await updateMyInfo({ phone }, '휴대번호가 성공적으로 변경되었습니다.');
     } catch (err) {
-      showToast(err.message);
+      showToast(getFriendlyErrorMessage(err, '요청을 처리하지 못했습니다.'));
     }
   });
 
@@ -2761,7 +2797,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['#edit-myinfo-current-pw','#edit-myinfo-new-pw','#edit-myinfo-new-pw-confirm'].forEach(clearPasswordValue);
       }
     } catch (err) {
-      showToast(err.message);
+      showToast(getFriendlyErrorMessage(err, '요청을 처리하지 못했습니다.'));
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = prevText || '회원정보 수정'; }
     }
@@ -2882,7 +2918,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || '결제 처리에 실패했습니다.');
+        throw new Error(getFriendlyErrorMessage(errData, '결제 처리에 실패했습니다.'));
       }
 
       showToast('결제가 성공적으로 완료되어 충전되었습니다.');
@@ -2919,7 +2955,7 @@ document.addEventListener('DOMContentLoaded', () => {
       navigate('home');
 
     } catch (err) {
-      showToast(err.message);
+      showToast(getFriendlyErrorMessage(err, '요청을 처리하지 못했습니다.'));
     } finally {
       btn.innerHTML = originalHtml;
       btn.disabled = false;
