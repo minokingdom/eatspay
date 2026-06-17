@@ -873,19 +873,6 @@ html.native-app .screen-container {
   opacity: 1;
 }
 
-.form-input[type="password"] {
-  color: #111827 !important;
-  -webkit-text-fill-color: #111827 !important;
-  caret-color: #111827 !important;
-  font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif !important;
-}
-
-.form-input[type="password"]::placeholder {
-  color: #9ca3af;
-  -webkit-text-fill-color: #9ca3af !important;
-  font-family: var(--font) !important;
-}
-
 .form-input:focus {
   border-color: var(--green-primary);
   box-shadow: 0 0 0 3px rgba(58, 125, 68, 0.12);

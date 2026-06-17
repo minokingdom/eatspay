@@ -8,7 +8,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Square:wght@400;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=1.0.13" />
+  <link rel="stylesheet" href="css/style.css?v=1.0.14" />
 
 </head>
 <body>
@@ -584,11 +584,11 @@
             </div>
             <div class="form-group">
               <label class="form-label" style="font-size: 14px; font-weight: 800; color: #666; margin-bottom: 8px;">새 비밀번호</label>
-              <input type="password" id="find-pw-new" class="form-input" placeholder="새 비밀번호를 입력해주세요">
+              <input type="text" id="find-pw-new" class="form-input" placeholder="새 비밀번호를 입력해주세요">
             </div>
             <div class="form-group">
               <label class="form-label" style="font-size: 14px; font-weight: 800; color: #666; margin-bottom: 8px;">새 비밀번호 확인</label>
-              <input type="password" id="find-pw-new2" class="form-input" placeholder="새 비밀번호를 다시 입력해주세요">
+              <input type="text" id="find-pw-new2" class="form-input" placeholder="새 비밀번호를 다시 입력해주세요">
             </div>
             <button class="btn-primary" id="find-pw-submit" style="width:100%; margin-top:20px;">비밀번호 재설정</button>
           </div>
@@ -699,8 +699,7 @@
             <div class="form-group">
               <label class="form-label" style="font-size: 14px; font-weight: 800; color: #666; margin-bottom: 8px;">비밀번호</label>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="password" id="add-card-pw" class="form-input" placeholder="두자리" style="width: 100px; text-align: center;">
-                <span style="font-size: 18px; font-weight: bold; color: #555; letter-spacing: 2px;">**</span>
+                <input type="text" id="add-card-pw" class="form-input" placeholder="두자리" inputmode="numeric" autocomplete="off" style="width: 100px; text-align: center;">
               </div>
             </div>
 
@@ -1044,15 +1043,15 @@
             <span style="font-size: 14px; font-weight: 800; color: #666;">비밀번호 변경</span>
             <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label" style="font-size: 12px; color: #888; font-weight: 700; margin-bottom: 6px;">현재 비밀번호</label>
-              <input type="password" id="edit-myinfo-current-pw" class="form-input" placeholder="현재 비밀번호를 입력해주세요">
+              <input type="text" id="edit-myinfo-current-pw" class="form-input" placeholder="현재 비밀번호를 입력해주세요">
             </div>
           </div>
 
           <!-- 새로운 비밀번호 -->
           <div style="padding: 0 24px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 12px;">
             <span style="font-size: 14px; font-weight: 800; color: #666;">새로운 비밀번호</span>
-            <input type="password" id="edit-myinfo-new-pw" class="form-input" placeholder="새로운 비밀번호를 입력해주세요" style="margin-bottom: 8px;">
-            <input type="password" id="edit-myinfo-new-pw-confirm" class="form-input" placeholder="다시 한번 새로운 비밀번호를 입력해주세요">
+            <input type="text" id="edit-myinfo-new-pw" class="form-input" placeholder="새로운 비밀번호를 입력해주세요" style="margin-bottom: 8px;">
+            <input type="text" id="edit-myinfo-new-pw-confirm" class="form-input" placeholder="다시 한번 새로운 비밀번호를 입력해주세요">
           </div>
 
           <!-- 수정 버튼 및 탈퇴 링크 -->

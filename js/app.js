@@ -756,7 +756,7 @@ function resetCardFormForAdd() {
     cardNumber.placeholder = '카드번호 전체를 입력해주세요';
     cardNumber.value = '';
   }
-  if (pw) pw.value = '';
+  clearPasswordValue('#add-card-pw');
   if (month) month.value = '';
   if (year) year.value = '';
   if (identity) identity.value = '';
@@ -795,7 +795,7 @@ function applyCardEditDraftToForm() {
     input.style.background = '';
     input.style.color = '';
   });
-  if (pw) pw.value = '';
+  clearPasswordValue('#add-card-pw');
   if (month) month.value = '';
   if (year) year.value = '';
   if (identity) identity.value = '';
@@ -1688,10 +1688,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return input?.dataset.realPassword ?? input?.value ?? '';
   };
 
-  const bindMaskedPasswordInput = (inputId, toggleId) => {
+  const clearPasswordValue = (inputId) => {
     const input = $(inputId);
-    const toggle = $(toggleId);
-    if (!input || !toggle) return;
+    if (!input) return;
+    input.dataset.realPassword = '';
+    input.value = '';
+  };
+
+  const bindMaskedPasswordInput = (inputId, toggleId, options = {}) => {
+    const input = $(inputId);
+    const toggle = toggleId ? $(toggleId) : null;
+    if (!input) return;
+    const maxLength = Number(options.maxLength || 0);
+    const digitsOnly = !!options.digitsOnly;
     let realPassword = input.dataset.realPassword || '';
     let isVisible = false;
 
@@ -1699,8 +1708,10 @@ document.addEventListener('DOMContentLoaded', () => {
       input.dataset.realPassword = realPassword;
       input.type = 'text';
       input.value = isVisible ? realPassword : '*'.repeat(realPassword.length);
-      toggle.textContent = isVisible ? '숨김' : '보기';
-      toggle.setAttribute('aria-label', isVisible ? '비밀번호 숨기기' : '비밀번호 보기');
+      if (toggle) {
+        toggle.textContent = isVisible ? '숨김' : '보기';
+        toggle.setAttribute('aria-label', isVisible ? '비밀번호 숨기기' : '비밀번호 보기');
+      }
       requestAnimationFrame(() => {
         const pos = Math.max(0, Math.min(cursor, input.value.length));
         input.setSelectionRange(pos, pos);
@@ -1724,8 +1735,11 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (event.inputType === 'deleteContentForward') {
         realPassword = realPassword.slice(0, start) + realPassword.slice(start === end ? end + 1 : end);
       } else {
-        const inserted = event.data || event.clipboardData?.getData('text') || '';
+        let inserted = event.data || event.clipboardData?.getData('text') || '';
+        if (digitsOnly) inserted = inserted.replace(/\D/g, '');
+        if (maxLength > 0) inserted = inserted.slice(0, Math.max(0, maxLength - (realPassword.length - (end - start))));
         realPassword = realPassword.slice(0, start) + inserted + realPassword.slice(end);
+        if (maxLength > 0) realPassword = realPassword.slice(0, maxLength);
         nextCursor = start + inserted.length;
       }
 
@@ -1734,14 +1748,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     input.addEventListener('input', () => {
       if (!isVisible) return;
-      realPassword = input.value;
+      realPassword = digitsOnly ? input.value.replace(/\D/g, '') : input.value;
+      if (maxLength > 0) realPassword = realPassword.slice(0, maxLength);
       input.dataset.realPassword = realPassword;
+      if (input.value !== realPassword) input.value = realPassword;
     });
 
-    toggle.addEventListener('click', () => {
-      if (isVisible) {
-        realPassword = input.value;
-      }
+    toggle?.addEventListener('click', () => {
+      if (isVisible) realPassword = input.value;
       isVisible = !isVisible;
       render(realPassword.length);
       input.focus();
@@ -1752,6 +1766,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   bindMaskedPasswordInput('#login-pw', '#login-pw-toggle');
   bindMaskedPasswordInput('#reg-pw', '#reg-pw-toggle');
+  bindMaskedPasswordInput('#add-card-pw', null, { maxLength: 2, digitsOnly: true });
+  bindMaskedPasswordInput('#find-pw-new', null);
+  bindMaskedPasswordInput('#find-pw-new2', null);
+  bindMaskedPasswordInput('#edit-myinfo-current-pw', null);
+  bindMaskedPasswordInput('#edit-myinfo-new-pw', null);
+  bindMaskedPasswordInput('#edit-myinfo-new-pw-confirm', null);
 
   // --------- SOCIAL LOGINS ---------
   const handleSocialLogin = (btnId, name) => {
@@ -2117,8 +2137,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const id = $('#find-pw-id')?.value;
     const phone = findPwPhone?.value;
     const sms = $('#find-pw-sms-input')?.value;
-    const pw = $('#find-pw-new')?.value;
-    const pw2 = $('#find-pw-new2')?.value;
+    const pw = getPasswordValue('#find-pw-new');
+    const pw2 = getPasswordValue('#find-pw-new2');
     
     if (!id) { showToast('아이디를 입력해주세요.'); return; }
     if (!phone) { showToast('휴대번호를 입력해주세요.'); return; }
@@ -2218,7 +2238,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardCompany = cardCompanySelect && cardCompanySelect.selectedIndex === cardCompanySelect.options.length - 1
       ? (cardCompanyCustom || '')
       : cardCompanyValue;
-    const cardPw = $('#add-card-pw')?.value;
+    const cardPw = getPasswordValue('#add-card-pw');
     const month = $('#add-card-month')?.value;
     const year = $('#add-card-year')?.value;
     const identity = $('#add-card-identity')?.value;
@@ -2310,7 +2330,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('카드가 성공적으로 등록되었습니다.');
 
       if (cardNumInput) cardNumInput.value = '';
-      if ($('#add-card-pw')) $('#add-card-pw').value = '';
+      clearPasswordValue('#add-card-pw');
       if ($('#add-card-month')) $('#add-card-month').value = '';
       if ($('#add-card-year')) $('#add-card-year').value = '';
       if (inputIdentity) inputIdentity.value = '';
@@ -2694,9 +2714,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('#edit-myinfo-submit')?.addEventListener('click', async () => {
     const phone = editPhoneInput?.value || undefined;
-    const currentPassword = $('#edit-myinfo-current-pw')?.value || '';
-    const newPassword = $('#edit-myinfo-new-pw')?.value || '';
-    const confirmPassword = $('#edit-myinfo-new-pw-confirm')?.value || '';
+    const currentPassword = getPasswordValue('#edit-myinfo-current-pw');
+    const newPassword = getPasswordValue('#edit-myinfo-new-pw');
+    const confirmPassword = getPasswordValue('#edit-myinfo-new-pw-confirm');
 
     if (phone && phone.length < 10) {
       showToast('휴대번호를 올바르게 입력해주세요.');
@@ -2725,10 +2745,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const ok = await updateMyInfo(payload, '회원정보가 수정되었습니다.');
       if (ok) {
-        ['edit-myinfo-current-pw','edit-myinfo-new-pw','edit-myinfo-new-pw-confirm'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.value = '';
-        });
+        ['#edit-myinfo-current-pw','#edit-myinfo-new-pw','#edit-myinfo-new-pw-confirm'].forEach(clearPasswordValue);
       }
     } catch (err) {
       showToast(err.message);
