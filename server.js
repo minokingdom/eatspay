@@ -313,6 +313,9 @@ app.get('/', (req, res) => {
 });
 
 app.get('/admin', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   res.sendFile(path.join(__dirname, '이츠페이_관리자_시스템_10.html'));
 });
 
