@@ -419,7 +419,7 @@ app.post('/api/talk/posts/:id/chats', authenticate, asyncHandler(async (req, res
   if (!post) {
     return sendError(res, 404, 'TALK_POST_NOT_FOUND', 'Talk 글을 찾을 수 없습니다.');
   }
-  if (Number(post.userId) === Number(req.user.id)) {
+  if (post.franchiseId && req.user.franchiseId && Number(post.franchiseId) === Number(req.user.franchiseId)) {
     return sendError(res, 400, 'SELF_CHAT_NOT_ALLOWED', '내가 등록한 글에는 채팅을 시작할 수 없습니다.');
   }
   const chat = await repo.findOrCreateTalkChat({

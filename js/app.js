@@ -1840,6 +1840,12 @@ async function startTalkChat(postId) {
     navigate(isAuthenticated() ? 'home' : 'login');
     return;
   }
+  const post = talkPostCache.find(item => String(item.id) === String(postId));
+  const user = getSessionUser();
+  if (post?.franchiseId && user?.franchiseId && String(post.franchiseId) === String(user.franchiseId)) {
+    showToast('내가 등록한 글에는 채팅을 시작할 수 없습니다.');
+    return;
+  }
   try {
     const response = await fetch(apiUrl(`/api/talk/posts/${encodeURIComponent(postId)}/chats`), {
       method: 'POST',
