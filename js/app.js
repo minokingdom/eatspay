@@ -1172,7 +1172,7 @@ function navigate(screenId, direction = 'forward') {
   if (screenId === 'talk-chat') {
     stopTalkChatPolling();
     void fetchTalkMessages();
-    talkChatPollTimer = setInterval(fetchTalkMessages, 3000);
+    talkChatPollTimer = setInterval(() => fetchTalkMessages({ silent: true }), 3000);
   } else {
     stopTalkChatPolling();
   }
@@ -1751,11 +1751,19 @@ function renderTalkDetail() {
   const wrap = $('#talk-detail-body');
   if (!wrap) return;
   const post = talkPostCache.find(item => String(item.id) === String(selectedTalkPostId));
+  const chatButton = $('#btn-talk-start-chat');
   if (!post) {
     wrap.innerHTML = '<div style="padding:32px 0;color:var(--text-muted);font-weight:800;text-align:center;">게시글을 찾을 수 없습니다.</div>';
+    if (chatButton) {
+      chatButton.disabled = true;
+      chatButton.textContent = '채팅할 수 없습니다';
+      chatButton.onclick = null;
+    }
     return;
   }
   const images = getTalkImages(post);
+  const user = getSessionUser();
+  const isOwnPost = post?.franchiseId && user?.franchiseId && String(post.franchiseId) === String(user.franchiseId);
   wrap.innerHTML = `
     <div style="display:flex;gap:8px;overflow-x:auto;margin:4px -24px 18px;padding:0 24px 4px;">
       ${images.length ? images.map(src => `<img src="${escapeHtml(src)}" alt="" style="width:260px;height:240px;object-fit:cover;border-radius:18px;border:1px solid var(--border-light);flex:0 0 auto;">`).join('') : '<div style="width:100%;height:190px;border-radius:18px;background:linear-gradient(135deg,#e8f5e9,#d9f2d4);display:flex;align-items:center;justify-content:center;font-size:42px;">🥕</div>'}
@@ -1765,7 +1773,12 @@ function renderTalkDetail() {
     <div style="font-size:19px;font-weight:900;color:var(--text-primary);margin-bottom:18px;">${Number(post.price || 0) > 0 ? formatWon(post.price) : '나눔'}</div>
     <div style="white-space:pre-wrap;font-size:14px;line-height:1.65;color:var(--text-secondary);font-weight:700;border-top:1px solid var(--border-light);padding-top:18px;">${escapeHtml(post.body || '')}</div>
   `;
-  $('#btn-talk-start-chat')?.addEventListener('click', () => startTalkChat(post.id));
+  if (chatButton) {
+    chatButton.disabled = Boolean(isOwnPost);
+    chatButton.textContent = isOwnPost ? '내가 등록한 글입니다' : '채팅하기';
+    chatButton.style.background = isOwnPost ? '#b8c4b8' : 'var(--green-primary)';
+    chatButton.onclick = isOwnPost ? null : () => startTalkChat(post.id);
+  }
 }
 
 async function fetchTalkPosts(limit = 20) {
@@ -1878,15 +1891,21 @@ async function fetchTalkChats() {
       cache: 'no-store'
     });
     const payload = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(getFriendlyErrorMessage(payload, '채팅 목록을 불러오지 못했습니다.'));
     const chats = Array.isArray(payload?.data) ? payload.data : [];
     if (!chats.length) {
       list.innerHTML = '<div style="padding:28px 0;text-align:center;color:var(--text-muted);font-weight:800;">아직 Talk 채팅이 없습니다.</div>';
       return;
     }
+    const user = getSessionUser();
     list.innerHTML = chats.map(chat => `
       <div class="talk-chat-row" data-chat-id="${escapeHtml(chat.id)}" style="padding:14px 0;border-bottom:1px solid var(--border-light);cursor:pointer;">
-        <div style="font-size:15px;font-weight:900;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(chat.postTitle || 'Talk')}</div>
-        <div style="font-size:12px;color:var(--text-muted);font-weight:800;margin-top:4px;">${escapeHtml(chat.lastMessage || '메시지가 없습니다.')}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="font-size:15px;font-weight:900;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(chat.postTitle || 'Talk')}</div>
+          <div style="font-size:10px;color:var(--text-muted);font-weight:800;white-space:nowrap;">${escapeHtml(chat.lastMessageAtLabel || '')}</div>
+        </div>
+        <div style="font-size:11px;color:var(--green-dark);font-weight:900;margin-top:4px;">${escapeHtml(getTalkChatPeerName(chat, user))}</div>
+        <div style="font-size:12px;color:var(--text-muted);font-weight:800;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(chat.lastMessage || '아직 메시지가 없습니다.')}</div>
       </div>
     `).join('');
   } catch (err) {
@@ -1894,7 +1913,14 @@ async function fetchTalkChats() {
   }
 }
 
-async function fetchTalkMessages() {
+function getTalkChatPeerName(chat, user = getSessionUser()) {
+  if (!chat) return '상대 가맹점';
+  const isSeller = String(chat.sellerUserId) === String(user?.id);
+  const peerName = isSeller ? chat.buyerName : chat.sellerName;
+  return peerName || chat.franchiseName || '상대 가맹점';
+}
+
+async function fetchTalkMessages({ silent = false } = {}) {
   if (!selectedTalkChatId) return;
   try {
     const response = await fetch(apiUrl(`/api/talk/chats/${encodeURIComponent(selectedTalkChatId)}/messages?_=${Date.now()}`), {
@@ -1907,8 +1933,15 @@ async function fetchTalkMessages() {
     const messages = Array.isArray(payload?.data?.messages) ? payload.data.messages : [];
     const user = getSessionUser();
     $('#talk-chat-title') && ($('#talk-chat-title').textContent = chat.postTitle || 'Talk 채팅');
+    $('#talk-chat-peer') && ($('#talk-chat-peer').textContent = getTalkChatPeerName(chat, user));
     const wrap = $('#talk-chat-messages');
     if (!wrap) return;
+    const scroller = $('#talk-chat-scroll');
+    const previousCount = Number(wrap.dataset.messageCount || 0);
+    const nextCount = messages.length;
+    const wasNearBottom = scroller
+      ? scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 80
+      : true;
     wrap.innerHTML = messages.map(msg => {
       const mine = String(msg.senderUserId) === String(user?.id);
       const readLabel = mine ? (msg.readAt ? '읽음' : '안읽음') : '';
@@ -1919,8 +1952,14 @@ async function fetchTalkMessages() {
         </div>
       `;
     }).join('') || '<div style="padding:28px 0;text-align:center;color:var(--text-muted);font-weight:800;">첫 메시지를 보내보세요.</div>';
+    wrap.dataset.messageCount = String(nextCount);
+    if (wasNearBottom || nextCount > previousCount) {
+      requestAnimationFrame(() => {
+        if (scroller) scroller.scrollTop = scroller.scrollHeight;
+      });
+    }
   } catch (err) {
-    showToast('채팅을 불러오지 못했습니다.');
+    if (!silent) showToast('채팅을 불러오지 못했습니다.');
   }
 }
 
@@ -1942,7 +1981,7 @@ async function sendTalkMessage() {
     const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(getFriendlyErrorMessage(payload, '메시지 전송에 실패했습니다.'));
     if (input) input.value = '';
-    await fetchTalkMessages();
+    await fetchTalkMessages({ silent: true });
   } catch (err) {
     showToast(err.message || '메시지 전송에 실패했습니다.');
   } finally {

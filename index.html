@@ -287,11 +287,12 @@
           <button class="btn-back" style="border:none; background:none; font-weight:800; cursor:pointer; color:#333;">‹ 이전</button>
           <img src="logo.png" style="height: 28px; width: auto;" alt="eats PAY">
         </div>
-        <div class="screen-content" style="padding: 0 20px 150px; overflow-y: auto;">
-          <div id="talk-chat-title" style="font-size:16px;font-weight:900;color:var(--text-primary);margin:4px 4px 12px;">Talk 채팅</div>
+        <div id="talk-chat-scroll" class="screen-content" style="padding: 0 20px calc(76px + var(--app-bottom-inset)); overflow-y: auto;">
+          <div id="talk-chat-title" style="font-size:16px;font-weight:900;color:var(--text-primary);margin:4px 4px 2px;">Talk 채팅</div>
+          <div id="talk-chat-peer" style="font-size:11px;font-weight:900;color:var(--green-dark);margin:0 4px 12px;">상대 가맹점</div>
           <div id="talk-chat-messages" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
-        <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--border-light);padding:10px 16px 18px;display:flex;gap:8px;">
+        <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--border-light);padding:10px 16px calc(12px + var(--app-bottom-inset));display:flex;gap:8px;">
           <input id="talk-chat-input" type="text" placeholder="메시지를 입력하세요" style="flex:1;height:42px;border:1.5px solid var(--border-color);border-radius:20px;padding:0 14px;font-size:14px;font-weight:700;">
           <button id="btn-talk-chat-send" type="button" style="width:58px;border:none;border-radius:20px;background:var(--green-primary);color:#fff;font-weight:900;">전송</button>
         </div>

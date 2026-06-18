@@ -396,3 +396,56 @@ test('deleteDeliveryAccountByFranchise deletes only delivery accounts owned by t
   assert.match(poolCalls[0].sql, /franchise_id = \$2/);
   assert.deepEqual(poolCalls[0].params, [9, 77]);
 });
+
+test('findOrCreateTalkChat reuses the same buyer chat for a post', async () => {
+  const { pool, poolCalls } = createFakePool({
+    rowsBySql: [{
+      includes: 'ON CONFLICT (post_id, buyer_user_id)',
+      rows: [{
+        id: 12,
+        post_id: 3,
+        seller_user_id: 40,
+        buyer_user_id: 51,
+        created_at: '2026-06-18T00:00:00.000Z',
+        updated_at: '2026-06-18T00:00:00.000Z'
+      }]
+    }]
+  });
+  const repo = createRepository(pool);
+
+  const chat = await repo.findOrCreateTalkChat({
+    postId: 3,
+    sellerUserId: 40,
+    buyerUserId: 51
+  });
+
+  assert.equal(chat.id, 12);
+  assert.equal(chat.postId, 3);
+  assert.match(poolCalls[0].sql, /ON CONFLICT \(post_id, buyer_user_id\)/);
+  assert.deepEqual(poolCalls[0].params, [3, 40, 51]);
+});
+
+test('markTalkMessagesRead updates only unread messages from the other user', async () => {
+  const { pool, poolCalls } = createFakePool({
+    rowsBySql: [{
+      includes: 'sender_user_id IS DISTINCT FROM $2',
+      rows: [{
+        id: 81,
+        chat_id: 12,
+        sender_user_id: 40,
+        sender_name: 'Seller Store',
+        message: '아직 있나요?',
+        read_at: '2026-06-18T00:10:00.000Z',
+        created_at: '2026-06-18T00:09:00.000Z'
+      }]
+    }]
+  });
+  const repo = createRepository(pool);
+
+  const updated = await repo.markTalkMessagesRead(12, 51);
+
+  assert.equal(updated.length, 1);
+  assert.equal(updated[0].senderUserId, 40);
+  assert.match(poolCalls[0].sql, /read_at IS NULL/);
+  assert.deepEqual(poolCalls[0].params, [12, 51]);
+});
