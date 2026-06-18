@@ -84,6 +84,8 @@ tr:hover td{background:#FAFFFE}
 .admin-pw-field{position:relative}
 .admin-pw-field .fi{padding-right:58px;color:#111827;-webkit-text-fill-color:#111827}
 .admin-pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:#E8F5E3;color:#2F8F2F;border-radius:7px;padding:5px 8px;font-size:11px;font-weight:800;cursor:pointer}
+.admin-modal-message{white-space:pre-wrap;line-height:1.7;font-size:13px;font-weight:700;color:#153B15;background:#F8FFF8;border:1px solid #D1E8D1;border-radius:8px;padding:12px 14px}
+.admin-modal-note{font-size:11px;color:#6B7280;font-weight:700;margin-top:6px;line-height:1.5}
 .fta{resize:vertical;min-height:80px}
 .fr2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
@@ -282,22 +284,30 @@ function nid(){return++D.nextId;}
 function today(){return new Date().toISOString().slice(0,10);}
 function v(id){const el=document.getElementById(id);return el?el.value:'';}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2500);}
-function openM(title,body,foot){document.querySelector('#mo .mbox')?.classList.remove('wide');document.getElementById('mti').textContent=title;document.getElementById('mbd').innerHTML=body;document.getElementById('mft').innerHTML=foot;document.getElementById('mo').style.display='flex';}
+function openM(title,body,foot){document.querySelector('#mo .mbox')?.classList.remove('wide');document.getElementById('mti').textContent=title;document.getElementById('mbd').innerHTML=body;document.getElementById('mft').innerHTML=foot;document.getElementById('mo').style.display='flex';setTimeout(()=>bindAdminPasswordFields(document.getElementById('mbd')),20);}
 function closeM(){document.getElementById('mo').style.display='none';document.querySelector('#mo .mbox')?.classList.remove('wide');}
 function closeMO(e){if(e.target===document.getElementById('mo'))closeM();}
-function adminAlert(message,title='알림'){return new Promise(resolve=>{window.__adminModalResolve=resolve;openM(title,`<div style="white-space:pre-wrap;line-height:1.7;font-size:13px;font-weight:700;color:#153B15">${message}</div>`,`<button class="btn bg2" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(true)">확인</button>`);});}
-function adminConfirm(message,title='확인'){return new Promise(resolve=>{window.__adminModalResolve=resolve;openM(title,`<div style="white-space:pre-wrap;line-height:1.7;font-size:13px;font-weight:700;color:#153B15">${message}</div>`,`<button class="btn bo" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(false)">취소</button><button class="btn bg2" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(true)">확인</button>`);});}
-function adminPrompt(message,defaultValue='',title='입력'){return new Promise(resolve=>{window.__adminModalResolve=resolve;openM(title,`<div style="white-space:pre-wrap;line-height:1.7;font-size:13px;font-weight:700;color:#153B15;margin-bottom:10px">${message}</div><input class="fi" id="admin-prompt-input" value="${String(defaultValue||'').replace(/"/g,'&quot;')}">`,`<button class="btn bo" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(null)">취소</button><button class="btn bg2" onclick="const v=document.getElementById('admin-prompt-input').value;closeM();window.__adminModalResolve&&window.__adminModalResolve(v)">확인</button>`);setTimeout(()=>document.getElementById('admin-prompt-input')?.focus(),30);});}
+function adminAlert(message,title='알림'){return new Promise(resolve=>{window.__adminModalResolve=resolve;openM(title,`<div class="admin-modal-message">${message}</div>`,`<button class="btn bg2" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(true)">확인</button>`);});}
+function adminConfirm(message,title='확인'){return new Promise(resolve=>{window.__adminModalResolve=resolve;openM(title,`<div class="admin-modal-message">${message}</div>`,`<button class="btn bo" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(false)">취소</button><button class="btn bg2" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(true)">확인</button>`);});}
+function adminPrompt(message,defaultValue='',title='입력'){return new Promise(resolve=>{window.__adminModalResolve=resolve;openM(title,`<div class="admin-modal-message" style="margin-bottom:10px">${message}</div><input class="fi" id="admin-prompt-input" value="${String(defaultValue||'').replace(/"/g,'&quot;')}">`,`<button class="btn bo" onclick="closeM();window.__adminModalResolve&&window.__adminModalResolve(null)">취소</button><button class="btn bg2" onclick="const v=document.getElementById('admin-prompt-input').value;closeM();window.__adminModalResolve&&window.__adminModalResolve(v)">확인</button>`);setTimeout(()=>document.getElementById('admin-prompt-input')?.focus(),30);});}
 function adminToken(){return sessionStorage.getItem('eatspayAdminToken')||'';}
 function adminAuthHeaders(extra={}){return {'Authorization':`Bearer ${adminToken()}`,...extra};}
 function adminPasswordValue(id){
   const el=document.getElementById(id);
   return el?.dataset.realPassword ?? el?.value ?? '';
 }
+function adminPwField(id,placeholder='',autocomplete='new-password'){
+  return `<div class="admin-pw-field"><input class="fi admin-pw-input" id="${id}" type="text" placeholder="${placeholder}" autocomplete="${autocomplete}"><button type="button" class="admin-pw-toggle" id="${id}-toggle">보기</button></div>`;
+}
+function bindAdminPasswordFields(root=document){
+  root?.querySelectorAll?.('.admin-pw-input').forEach(input=>bindAdminPassword(input.id,`${input.id}-toggle`));
+}
 function bindAdminPassword(id,toggleId){
   const input=document.getElementById(id);
   const toggle=document.getElementById(toggleId);
   if(!input)return;
+  if(input.dataset.adminPwBound==='1')return;
+  input.dataset.adminPwBound='1';
   let real=input.dataset.realPassword||'';
   let visible=false;
   const render=(cursor=real.length)=>{
@@ -810,7 +820,7 @@ function agencyOptions(selectedId,selectedName){
   return agencies.map(a=>`<option value="${a.id}" ${String(selectedId||'')===String(a.id)||(!selectedId&&selectedName===a.name)?'selected':''}>${a.name}</option>`).join('');
 }
 function franchiseForm(f={},roDA){const isNew=!f.id;return`
-  <div class="fr2"><div class="fg"><label class="fl">로그인 ID${isNew?' *':''}</label><input class="fi" id="fe" value="${f.email||''}" placeholder="예: store@example.com" autocomplete="username"></div><div class="fg"><label class="fl">${isNew?'비밀번호 *':'새 비밀번호'}</label><input class="fi" id="fpw" type="password" placeholder="${isNew?'초기 비밀번호':'변경할 때만 입력'}" autocomplete="new-password"></div></div>
+  <div class="fr2"><div class="fg"><label class="fl">로그인 ID${isNew?' *':''}</label><input class="fi" id="fe" value="${f.email||''}" placeholder="예: store@example.com" autocomplete="username"></div><div class="fg"><label class="fl">${isNew?'비밀번호 *':'새 비밀번호'}</label>${adminPwField('fpw',isNew?'초기 비밀번호':'변경할 때만 입력')}<div class="admin-modal-note">${isNew?'초기 로그인 비밀번호입니다.':'비워두면 기존 비밀번호가 유지됩니다.'}</div></div></div>
   <div class="fr2"><div class="fg"><label class="fl">상점명 *</label><input class="fi" id="fn" value="${f.name||''}" placeholder="예: 한솥도시락 강남점"></div><div class="fg"><label class="fl">대표자명</label><input class="fi" id="fo" value="${f.owner||''}" placeholder="홍길동"></div></div>
   <div class="fr2"><div class="fg"><label class="fl">휴대폰번호</label><input class="fi" id="fp" value="${f.phone||''}" placeholder="010-1234-5678"></div><div class="fg"><label class="fl">사업자등록번호 *</label><input class="fi" id="fb2" value="${f.bizNo||''}" placeholder="123-45-67890"></div></div>
   <div class="fr2"><div class="fg"><label class="fl">주소</label><input class="fi" id="faddr" value="${f.address||''}" placeholder="사업장 주소"></div><div class="fg"><label class="fl">매장 전화번호</label><input class="fi" id="ftel" value="${f.tel||''}" placeholder="02-1234-5678"></div></div>
@@ -838,7 +848,7 @@ async function savF(id){
   if(deliveryAccounts.length>2){await adminAlert('한 가맹점당 계좌는 최대 2개까지 등록할 수 있습니다.');return;}
   const payload={
     email:v('fe').trim(),
-    password:v('fpw'),
+    password:adminPasswordValue('fpw'),
     name:n,
     owner:v('fo').trim(),
     phone:v('fp').trim(),
@@ -1026,15 +1036,15 @@ function rAg(){
 function agencyParentName(a){const p=(D.agencies||[]).find(x=>String(x.id)===String(a.parentId||''));return p?p.name:'';}
 function agencyParentOptions(a={}){const current=String(a.id||'');const opts=(D.agencies||[]).filter(x=>String(x.id)!==current).map(x=>`<option value="${x.id}" ${String(a.parentId||'')===String(x.id)?'selected':''}>${x.name}</option>`).join('');return`<option value="">상위 없음</option>${opts}`;}
 function agForm(a={}){return`
-  <div class="fr2"><div class="fg"><label class="fl">대리점명 *</label><input class="fi" id="an" value="${a.name||''}" placeholder="예: 강남지사"></div><div class="fg"><label class="fl">로그인 ID</label><input class="fi" id="ai" value="${a.loginId||''}" placeholder="agency-xxx"></div></div>
+  <div class="fr2"><div class="fg"><label class="fl">대리점명 *</label><input class="fi" id="an" value="${a.name||''}" placeholder="예: 강남지사"></div><div class="fg"><label class="fl">지역</label><input class="fi" id="ar" value="${a.region||''}" placeholder="예: 서울 강남구"></div></div>
+  <div class="fr2"><div class="fg"><label class="fl">로그인 ID</label><input class="fi" id="ai" value="${a.loginId||''}" placeholder="agency-xxx" autocomplete="username"></div><div class="fg"><label class="fl">비밀번호 ${a.id?'변경':''}</label>${adminPwField('apw',a.id?'변경 시에만 입력':'앱 로그인 비밀번호')}<div class="admin-modal-note">${a.id?'비워두면 기존 비밀번호가 유지됩니다.':'신규 대리점 로그인 비밀번호입니다.'}</div></div></div>
   <div class="fr2"><div class="fg"><label class="fl">상위 대리점</label><select class="fs" id="aparent">${agencyParentOptions(a)}</select></div><div class="fg"><label class="fl">단계</label><select class="fs" id="al">${[1,2,3,4].map(n=>`<option value="${n}" ${a.level===n?'selected':''}>${n}단계</option>`).join('')}</select></div></div>
-  <div class="fr2"><div class="fg"><label class="fl">지역</label><input class="fi" id="ar" value="${a.region||''}" placeholder="예: 서울 강남구"></div><div class="fg"><label class="fl">비밀번호 ${a.id?'변경':''}</label><input class="fi" id="apw" type="password" placeholder="${a.id?'변경 시에만 입력':'앱 로그인 비밀번호'}" autocomplete="new-password"></div></div>
   <div class="fr2"><div class="fg"><label class="fl">대표자명</label><input class="fi" id="ao" value="${a.owner||''}" placeholder="홍길동"></div><div class="fg"><label class="fl">휴대폰번호</label><input class="fi" id="ap" value="${a.phone||''}" placeholder="010-1234-5678"></div></div>
   <div class="fg"><label class="fl">수수료율 (%)</label><input class="fi" id="af" type="number" step="0.01" value="${a.feeRate||4.2}"></div>
   <div class="fg"><label class="fl">운영 배달대행 플랫폼 (비고 메모)</label><input class="fi" id="adn" value="${a.deliveryNote||''}" placeholder="예: 생각대로, 바로고, 딜버 운영 중"></div>`;}
 function addAg(){openM('대리점 생성',agForm(),`<button class="btn bo" onclick="closeM()">취소</button><button class="btn bg2" onclick="savAg()">저장</button>`);}
 function edAg(id){const a=D.agencies.find(x=>x.id===id);openM('대리점 수정',agForm(a),`<button class="btn bo" onclick="closeM()">취소</button><button class="btn bg2" onclick="savAg(${id})">저장</button>`);}
-async function savAg(id){const n=v('an');if(!n.trim()){await adminAlert('대리점명 필요');return;}const data={name:n.trim(),loginId:v('ai'),level:parseInt(v('al')),region:v('ar'),owner:v('ao'),phone:v('ap'),feeRate:parseFloat(v('af'))||4.2,deliveryNote:v('adn'),parentId:v('aparent')||null,password:v('apw')};if(!id&&(!data.loginId||!data.password)){await adminAlert('신규 대리점은 로그인 ID와 비밀번호가 필요합니다.');return;}try{const res=await fetch(id?`/api/admin/agencies/${encodeURIComponent(id)}`:'/api/admin/agencies',{method:id?'PATCH':'POST',headers:adminAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify(data)});if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error?.message||err.message||'대리점 저장에 실패했습니다.');}await syncBackendTransactions({forceRender:true});closeM();toast(id?'대리점이 수정되었습니다.':'대리점이 생성되었습니다.');}catch(e){await adminAlert(e.message||'대리점 저장에 실패했습니다.');}}
+async function savAg(id){const n=v('an');if(!n.trim()){await adminAlert('대리점명 필요');return;}const data={name:n.trim(),loginId:v('ai'),level:parseInt(v('al')),region:v('ar'),owner:v('ao'),phone:v('ap'),feeRate:parseFloat(v('af'))||4.2,deliveryNote:v('adn'),parentId:v('aparent')||null,password:adminPasswordValue('apw')};if(!id&&(!data.loginId||!data.password)){await adminAlert('신규 대리점은 로그인 ID와 비밀번호가 필요합니다.');return;}try{const res=await fetch(id?`/api/admin/agencies/${encodeURIComponent(id)}`:'/api/admin/agencies',{method:id?'PATCH':'POST',headers:adminAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify(data)});if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error?.message||err.message||'대리점 저장에 실패했습니다.');}await syncBackendTransactions({forceRender:true});closeM();toast(id?'대리점이 수정되었습니다.':'대리점이 생성되었습니다.');}catch(e){await adminAlert(e.message||'대리점 저장에 실패했습니다.');}}
 async function delAg(id){const a=D.agencies.find(x=>x.id===id);if(!a)return;if(!await adminConfirm(`'${a.name}'을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`))return;D.agencies=D.agencies.filter(x=>x.id!==id);save();renderPage();toast('삭제');}
 
 // ═══ 배달대행사 관리 ═══
@@ -1158,10 +1168,10 @@ function pgAdmins(){const roles=getRoles();return`
   </div></div>`;}
 function edRoles(){const roles=getRoles();openM('권한 이름 수정',`<div class="aw aw-w">권한 이름을 바꾸면 기존 관리자의 권한도 함께 변경됩니다.</div>${roles.map((r,i)=>`<div class="fr2" style="margin-bottom:8px"><div class="fg" style="margin:0"><label class="fl">권한명 ${i+1}</label><input class="fi" id="rn-${i}" value="${r.name}"></div><div class="fg" style="margin:0"><label class="fl">설명</label><input class="fi" id="rd-${i}" value="${r.desc}"></div></div>`).join('')}`,`<button class="btn bo" onclick="closeM()">취소</button><button class="btn bg2" onclick="savRoles()">저장</button>`);}
 function savRoles(){const roles=getRoles();const nr=roles.map((r,i)=>({...r,name:document.getElementById(`rn-${i}`).value.trim()||r.name,desc:document.getElementById(`rd-${i}`).value||r.desc}));nr.forEach((n,i)=>{if(n.name!==roles[i].name)D.admins.forEach(a=>{if(a.role===roles[i].name)a.role=n.name;});});D.customRoles=nr;save();closeM();renderPage();toast('권한 이름 수정 완료');}
-function adForm(a={}){const roles=getRoles();return`<div class="fr2"><div class="fg"><label class="fl">로그인 아이디 *</label><input class="fi" id="adi" value="${a.loginId||''}" placeholder="admin001"></div><div class="fg"><label class="fl">이름 *</label><input class="fi" id="adn" value="${a.name||''}" placeholder="홍길동"></div></div><div class="fg"><label class="fl">권한 레벨</label><select class="fs" id="adr">${roles.map(r=>`<option ${r.name===(a.role||roles[1].name)?'selected':''}>${r.name}</option>`).join('')}</select></div>${!a.id?`<div class="fr2"><div class="fg"><label class="fl">비밀번호 *</label><input class="fi" id="adp" type="password"></div><div class="fg"><label class="fl">비밀번호 확인</label><input class="fi" id="adp2" type="password"></div></div>`:''}`;}
+function adForm(a={}){const roles=getRoles();const isNew=!a.id;return`<div class="fr2"><div class="fg"><label class="fl">로그인 아이디 *</label><input class="fi" id="adi" value="${a.loginId||''}" placeholder="admin001" autocomplete="username"></div><div class="fg"><label class="fl">${isNew?'비밀번호 *':'새 비밀번호'}</label>${adminPwField('adp',isNew?'관리자 로그인 비밀번호':'변경할 때만 입력')}<div class="admin-modal-note">${isNew?'관리자 로그인에 사용할 비밀번호입니다.':'비워두면 기존 비밀번호가 유지됩니다.'}</div></div></div><div class="fr2"><div class="fg"><label class="fl">이름 *</label><input class="fi" id="adn" value="${a.name||''}" placeholder="홍길동"></div><div class="fg"><label class="fl">비밀번호 확인</label>${adminPwField('adp2',isNew?'비밀번호 재입력':'변경 시 재입력')}</div></div><div class="fg"><label class="fl">권한 레벨</label><select class="fs" id="adr">${roles.map(r=>`<option ${r.name===(a.role||roles[1].name)?'selected':''}>${r.name}</option>`).join('')}</select></div>`;}
 function addAdm(){openM('관리자 생성',adForm(),`<button class="btn bo" onclick="closeM()">취소</button><button class="btn bg2" onclick="savAdm()">생성</button>`);}
 function edAdm(id){const a=D.admins.find(x=>x.id===id);openM('관리자 수정',adForm(a),`<button class="btn bo" onclick="closeM()">취소</button><button class="btn bg2" onclick="savAdm(${id})">저장</button>`);}
-async function savAdm(id){const n=v('adn');if(!n){await adminAlert('이름 필요');return;}if(!id){const p=v('adp'),p2=v('adp2');if(p!==p2){await adminAlert('비밀번호 불일치');return;}}const data={loginId:v('adi'),name:n,role:v('adr')};if(id){Object.assign(D.admins.find(x=>x.id===id),data);toast('수정');}else{D.admins.push({id:nid(),...data,lastLogin:'-'});toast('생성');}save();closeM();renderPage();}
+async function savAdm(id){const n=v('adn');if(!n){await adminAlert('이름 필요');return;}const p=adminPasswordValue('adp'),p2=adminPasswordValue('adp2');if(!id&&!p){await adminAlert('비밀번호를 입력하세요.');return;}if((p||p2)&&p!==p2){await adminAlert('비밀번호 불일치');return;}const data={loginId:v('adi'),name:n,role:v('adr')};if(p)data.password=p;if(id){Object.assign(D.admins.find(x=>x.id===id),data);toast('수정');}else{D.admins.push({id:nid(),...data,lastLogin:'-'});toast('생성');}save();closeM();renderPage();}
 async function delAdm(id){if(D.admins.length<=1){await adminAlert('최소 1명 필요');return;}if(!await adminConfirm('이 관리자 계정을 삭제하시겠습니까?'))return;D.admins=D.admins.filter(x=>x.id!==id);save();renderPage();toast('삭제');}
 
 // ═══ PG사 관리 ═══
