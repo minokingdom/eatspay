@@ -35,7 +35,7 @@
   --header-height: 80px;
   --bottom-nav-height: 60px;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-  --system-nav-bottom: 10px;
+  --system-nav-bottom: 4px;
   --app-bottom-inset: max(var(--safe-area-bottom), var(--system-nav-bottom));
 }
 
@@ -225,7 +225,7 @@ html.native-app .screen-container {
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
-  padding-bottom: calc(var(--bottom-nav-height) + var(--app-bottom-inset) + 14px);
+  padding-bottom: calc(var(--bottom-nav-height) + var(--app-bottom-inset) + 8px);
 }
 
 .scrollable-content::-webkit-scrollbar {
@@ -1666,7 +1666,7 @@ html.native-app .screen-container {
   }
 
   .scrollable-content {
-    padding-bottom: calc(var(--bottom-nav-height) + var(--app-bottom-inset) + 16px) !important;
+    padding-bottom: calc(var(--bottom-nav-height) + var(--app-bottom-inset) + 10px) !important;
   }
 }
 
