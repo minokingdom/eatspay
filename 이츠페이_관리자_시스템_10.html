@@ -11,7 +11,7 @@ const CONFIG = {
     dashboard:"대시보드", payments:"결제 내역", pgsettle:"PG 정산 확인",
     settlements:"대리점 정산", franchises:"가맹점 목록", accounts:"출금계좌 목록",
     agencies:"대리점 관리", deliveryMgmt:"배달대행사 관리", inquiries:"영업대리점 개설문의",
-    banners:"배너 관리", faqs:"FAQ 관리", installments:"무이자 할부",
+    banners:"배너 관리", faqs:"FAQ 관리", installments:"무이자 할부", push:"푸시알림",
     pg:"PG사 관리", fees:"수수료율 설정", admins:"관리자 계정",
     notices:"공지사항", guides:"이용가이드",
   },
@@ -250,7 +250,7 @@ const HQ_NAV=[
   {s:'결제'},{id:'payments',sub:1},{id:'pgsettle',sub:1},{id:'settlements',sub:1},
   {s:'가맹점'},{id:'franchises',sub:1},{id:'accounts',sub:1},
   {s:'대리점'},{id:'agencies'},
-  {s:'운영'},{id:'deliveryMgmt',sub:1},{id:'inquiries',sub:1},{id:'banners',sub:1},{id:'faqs',sub:1},{id:'installments',sub:1},{id:'pg',sub:1},{id:'fees',sub:1},{id:'admins',sub:1},
+  {s:'운영'},{id:'deliveryMgmt',sub:1},{id:'inquiries',sub:1},{id:'banners',sub:1},{id:'faqs',sub:1},{id:'installments',sub:1},{id:'push',sub:1},{id:'pg',sub:1},{id:'fees',sub:1},{id:'admins',sub:1},
   {s:'게시판'},{id:'notices',sub:1},{id:'guides',sub:1},
 ];
 const AG_NAV=[
@@ -279,6 +279,7 @@ function renderNav(){
 
 // ═══ 헬퍼 ═══
 function fmt(n){return Number(n).toLocaleString()+'원';}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function bdg(t){const roles=getRoles().map(r=>r.name);if(roles.includes(t)){const r=getRoles().find(x=>x.name===t);return`<span class="bdg" style="background:${r.color}22;color:${r.color}">${t}</span>`;}const label=t==='롤백'||t==='ROLLED_BACK'?'취소':t;const m={'정상 승인':'bg','승인 대기':'by','승인 거절':'br','승인완료':'bg','승인대기':'by','반려':'br','결제완료':'bg','취소':'br','정산완료':'bg','활성':'bg','비활성':'by','삭제':'br','상담 완료':'bb','상담 대기':'by'};return`<span class="bdg ${m[label]||'bgr'}">${label}</span>`;}
 function nid(){return++D.nextId;}
 function today(){return new Date().toISOString().slice(0,10);}
@@ -1282,6 +1283,103 @@ async function savInst(){
   }
 }
 
+// ═══ 푸시알림 ═══
+function pgPush(){return`
+  <div class="aw aw-b">관리자 승인/반려 시 앱에 발송되는 푸시알림 상태를 확인하고 테스트 발송할 수 있습니다.</div>
+  <div class="kgrid" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="kpi"><div class="kl">Firebase 서버 키</div><div class="kv" id="push-firebase-status">확인중</div><div class="ks" id="push-firebase-detail">-</div></div>
+    <div class="kpi"><div class="kl">활성 토큰</div><div class="kv" id="push-enabled-count">-</div><div class="ks">푸시 수신 가능 기기</div></div>
+    <div class="kpi"><div class="kl">전체 토큰</div><div class="kv" id="push-total-count">-</div><div class="ks" id="push-token-users">-</div></div>
+    <div class="kpi"><div class="kl">비활성 토큰</div><div class="kv" id="push-disabled-count">-</div><div class="ks">무효 처리된 기기</div></div>
+  </div>
+  <div class="card"><div class="ch"><span style="font-weight:700;font-size:14px">계정별 푸시 확인/테스트</span><button class="btn bo sm" onclick="loadPushStatus()">전체 새로고침</button></div>
+  <div style="padding:14px">
+    <div class="fr3">
+      <div class="fg"><label class="fl">대상 이메일</label><input class="fi" id="push-target-email" placeholder="예: admin@eatspay.co.kr"></div>
+      <div class="fg"><label class="fl">알림 제목</label><input class="fi" id="push-test-title" value="eats PAY 테스트 알림"></div>
+      <div class="fg"><label class="fl">알림 내용</label><input class="fi" id="push-test-body" value="푸시알림 연결이 정상적으로 동작합니다."></div>
+    </div>
+    <div class="ab" style="justify-content:flex-end">
+      <button class="btn bo" onclick="loadPushStatusForTarget()">대상 상태 확인</button>
+      <button class="btn bg2" onclick="sendPushTest()">테스트 발송</button>
+    </div>
+    <div id="push-target-result" style="margin-top:12px"></div>
+  </div></div>
+  <div class="card"><div class="ch"><span style="font-weight:700;font-size:14px">최근 등록 기기 토큰</span><span style="font-size:11px;color:#6B7280">토큰은 보안을 위해 일부만 표시됩니다.</span></div>
+  <div class="tw"><table><thead><tr><th>사용자 ID</th><th>플랫폼</th><th>상태</th><th>토큰</th><th>갱신일시</th></tr></thead><tbody id="push-token-rows"><tr><td colspan="5" class="emp">불러오는 중입니다.</td></tr></tbody></table></div></div>`;}
+async function fetchPushStatus(email=''){
+  const qs=email?`?email=${encodeURIComponent(email)}`:'';
+  const res=await fetch(`/api/admin/push/status${qs}`,{headers:adminAuthHeaders(),cache:'no-store'});
+  if(await handleAdminUnauthorized(res))return fetchPushStatus(email);
+  if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error?.message||err.message||'푸시 상태를 불러오지 못했습니다.');}
+  const json=await res.json();
+  return json.data||{};
+}
+async function loadPushStatus(){
+  try{
+    const data=await fetchPushStatus();
+    renderPushStatus(data);
+  }catch(e){
+    await adminAlert(e.message||'푸시 상태를 불러오지 못했습니다.');
+  }
+}
+async function loadPushStatusForTarget(){
+  const email=v('push-target-email').trim();
+  if(!email){await adminAlert('대상 이메일을 입력하세요.');return;}
+  try{
+    const data=await fetchPushStatus(email);
+    renderPushStatus(data);
+  }catch(e){
+    await adminAlert(e.message||'대상 푸시 상태 확인에 실패했습니다.');
+  }
+}
+function renderPushStatus(data){
+  const firebase=data.firebase||{};
+  const tokens=data.tokens||{};
+  const firebaseOk=!!firebase.configured;
+  const setText=(id,text)=>{const el=document.getElementById(id);if(el)el.textContent=text;};
+  setText('push-firebase-status',firebaseOk?'연결됨':'미설정');
+  setText('push-firebase-detail',firebase.detail||'-');
+  setText('push-enabled-count',String(tokens.enabled??0));
+  setText('push-total-count',String(tokens.total??0));
+  setText('push-disabled-count',String(tokens.disabled??0));
+  setText('push-token-users',`등록 사용자 ${tokens.users??0}명`);
+  const rows=Array.isArray(data.recentTokens)?data.recentTokens:[];
+  const tbody=document.getElementById('push-token-rows');
+  if(tbody){
+    tbody.innerHTML=rows.length?rows.map(row=>`<tr><td>${esc(row.userId)}</td><td>${esc(row.platform||'unknown')}</td><td>${bdg(row.enabled?'활성':'비활성')}</td><td style="font-family:monospace;font-size:11px">${esc(row.token)}</td><td>${esc(row.updatedAt||'-')}</td></tr>`).join(''):`<tr><td colspan="5" class="emp">등록된 푸시 토큰이 없습니다.</td></tr>`;
+  }
+  const target=document.getElementById('push-target-result');
+  if(target){
+    const t=data.target;
+    if(!t){
+      target.innerHTML='';
+    }else if(!t.found){
+      target.innerHTML=`<div class="aw aw-w" style="margin-bottom:0">대상 계정을 찾지 못했습니다.</div>`;
+    }else{
+      const hasToken=Number(t.enabledTokens||0)>0;
+      target.innerHTML=`<div class="aw ${hasToken?'aw-g':'aw-w'}" style="margin-bottom:0"><div><b>${esc(t.franchiseName||t.email)}</b><br>활성 토큰 ${esc(t.enabledTokens)}개 · 플랫폼 ${esc((t.platforms||[]).join(', ')||'-')}</div></div>`;
+    }
+  }
+}
+async function sendPushTest(){
+  const email=v('push-target-email').trim();
+  const title=v('push-test-title').trim()||'eats PAY 테스트 알림';
+  const body=v('push-test-body').trim()||'푸시알림 연결이 정상적으로 동작합니다.';
+  if(!email){await adminAlert('대상 이메일을 입력하세요.');return;}
+  try{
+    const res=await fetch('/api/admin/push/test',{method:'POST',headers:adminAuthHeaders({'Content-Type':'application/json'}),body:JSON.stringify({email,title,body})});
+    if(await handleAdminUnauthorized(res))return sendPushTest();
+    const json=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(json.error?.message||json.message||'테스트 발송에 실패했습니다.');
+    const p=json.data?.push||{};
+    await adminAlert(`테스트 푸시 요청이 완료되었습니다.\n\nFirebase 사용: ${p.enabled?'예':'아니오'}\n성공: ${p.sent||0}건\n실패: ${p.failed||0}건`,'푸시 테스트');
+    await loadPushStatusForTarget();
+  }catch(e){
+    await adminAlert(e.message||'테스트 발송에 실패했습니다.');
+  }
+}
+
 // ═══ 배너 ═══
 function pgBanners(){const fl=D.banners.filter(b=>b.type===bannerTab);return`
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -1299,7 +1397,7 @@ async function delBn(id){if(!await adminConfirm('배너를 삭제하시겠습니
 
 // ═══ 렌더 ═══
 function renderPage(){
-  const m={dashboard:pgDash,payments:pgPay,pgsettle:pgPGSettle,settlements:pgSettle,franchises:pgFr,accounts:pgAccounts,agencies:pgAg,deliveryMgmt:pgDeliveryMgmt,faqs:pgFAQ,notices:pgNotices,guides:pgGuides,admins:pgAdmins,pg:pgPG,fees:pgFees,installments:pgInst,inquiries:pgInquiries,banners:pgBanners};
+  const m={dashboard:pgDash,payments:pgPay,pgsettle:pgPGSettle,settlements:pgSettle,franchises:pgFr,accounts:pgAccounts,agencies:pgAg,deliveryMgmt:pgDeliveryMgmt,faqs:pgFAQ,notices:pgNotices,guides:pgGuides,admins:pgAdmins,pg:pgPG,fees:pgFees,installments:pgInst,push:pgPush,inquiries:pgInquiries,banners:pgBanners};
   document.getElementById('ct').innerHTML=(m[page]||pgDash)();
   if(page==='payments')   setTimeout(rPay,30);
   if(page==='pgsettle')   setTimeout(rGS,30);
@@ -1307,6 +1405,7 @@ function renderPage(){
   if(page==='accounts')   setTimeout(rAcc,30);
   if(page==='agencies')   setTimeout(rAg,30);
   if(page==='faqs')       setTimeout(rFAQ,30);
+  if(page==='push')       setTimeout(loadPushStatus,30);
 }
 function render(){renderNav();renderPage();}
 function makeBackendSnapshot(){
