@@ -85,6 +85,7 @@ cd /opt/eatspay
 sudo git pull origin main
 npm install
 npm run push:vapid
+npm run db:init
 sudo install -d -m 750 -o root -g root /etc/eatspay
 sudo nano /etc/eatspay/firebase-service-account.json
 sudo chmod 640 /etc/eatspay/firebase-service-account.json

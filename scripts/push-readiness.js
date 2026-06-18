@@ -137,7 +137,7 @@ async function main() {
         'Web push subscription table',
         false,
         err.message,
-        'Restart the eatspay server once so initDb can create web_push_subscriptions, or run the DB initialization flow.'
+        'Run npm run db:init or restart the eatspay server once so web_push_subscriptions is created.'
       ));
     }
     const enabledWebSubscriptions = Number(webTotals?.enabled || 0);
@@ -184,7 +184,7 @@ async function main() {
             : 'web_push_subscriptions is not ready yet.',
           webSubscriptionLookupReady
             ? 'Log in through the installed PWA/browser with this exact account and allow notifications.'
-            : 'Restart the eatspay server once so initDb can create web_push_subscriptions.'
+            : 'Run npm run db:init or restart the eatspay server once so web_push_subscriptions is created.'
         ));
       }
     }
