@@ -78,12 +78,14 @@ curl -fsS https://www.eatspay.co.kr/healthz
 Check Firebase and registered device tokens:
 
 ```bash
+npm run push:readiness
 npm run push:status
 ```
 
 Check one login account specifically:
 
 ```bash
+npm run push:readiness -- --email=admin@eatspay.co.kr
 npm run push:status -- --email=admin@eatspay.co.kr
 ```
 
