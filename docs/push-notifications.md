@@ -29,6 +29,19 @@ Eats Pay uses Firebase Cloud Messaging (FCM) for Android and iOS push notificati
 4. Add it to the iOS app target in Xcode.
 5. Configure APNs in Firebase Cloud Messaging.
 
+If the `ios/` project does not exist yet, create it on a Mac:
+
+```bash
+npx cap add ios
+npx cap sync ios
+```
+
+iOS push cannot be fully built or signed on Windows. It requires Mac, Xcode, Apple Developer account, APNs key/certificate, and the Firebase iOS app configuration.
+
+## Web/PWA push note
+
+The web app already has a service worker notification handler, but browser/PWA push delivery also requires a Web Push subscription flow and VAPID/web push server support. The current production push path is the native Capacitor app path through FCM.
+
 ## Server setup
 
 The server sends push messages through Firebase Admin SDK. Configure one of these on AWS:

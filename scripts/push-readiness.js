@@ -34,18 +34,62 @@ function printChecks(checks) {
   }
 }
 
+function fileContains(filePath, pattern) {
+  if (!fs.existsSync(filePath)) return false;
+  return pattern.test(fs.readFileSync(filePath, 'utf8'));
+}
+
+function findFile(startDir, fileName, depth = 4) {
+  if (!fs.existsSync(startDir) || depth < 0) return null;
+  const entries = fs.readdirSync(startDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(startDir, entry.name);
+    if (entry.isFile() && entry.name === fileName) return fullPath;
+    if (entry.isDirectory() && !['node_modules', '.git', 'build'].includes(entry.name)) {
+      const found = findFile(fullPath, fileName, depth - 1);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const targetEmail = args.email || process.env.PUSH_STATUS_EMAIL;
   const targetUserId = args.userId || process.env.PUSH_STATUS_USER_ID;
   const checks = [];
 
-  const androidGoogleServicesPath = path.join(__dirname, '..', 'android', 'app', 'google-services.json');
+  const rootDir = path.join(__dirname, '..');
+  const androidGoogleServicesPath = path.join(rootDir, 'android', 'app', 'google-services.json');
   checks.push(check(
     'Android Firebase config',
     fs.existsSync(androidGoogleServicesPath),
     androidGoogleServicesPath,
     'Download google-services.json from Firebase and place it at android/app/google-services.json, then run npm run android:sync.'
+  ));
+
+  const iosDir = path.join(rootDir, 'ios');
+  checks.push(check(
+    'iOS Capacitor project',
+    fs.existsSync(iosDir),
+    iosDir,
+    'On a Mac, run npx cap add ios, then add Firebase iOS app settings and APNs in Firebase.'
+  ));
+
+  const iosGooglePlistPath = findFile(iosDir, 'GoogleService-Info.plist');
+  checks.push(check(
+    'iOS Firebase config',
+    Boolean(iosGooglePlistPath),
+    iosGooglePlistPath || 'GoogleService-Info.plist was not found under ios/.',
+    'Download GoogleService-Info.plist from Firebase and add it to the iOS app target in Xcode.'
+  ));
+
+  const serviceWorkerPath = path.join(rootDir, 'sw.js');
+  checks.push(check(
+    'PWA service worker push handler',
+    fileContains(serviceWorkerPath, /addEventListener\(['"]push['"]/),
+    serviceWorkerPath,
+    'Keep sw.js registered on HTTPS and add web push subscription support before relying on browser/PWA push.'
   ));
 
   const firebaseStatus = getPushRuntimeStatus();
